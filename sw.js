@@ -2,7 +2,7 @@
  * Mobilfunknetz unterwegs zuverlässig lädt. Daten (data/*.json) werden
  * network-first geladen, damit neue Städte/Korrekturen sofort ankommen. */
 
-const CACHE = 'schnitzeljagd-v12';
+const CACHE = 'schnitzeljagd-v13';
 const SHELL = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const SHELL = [
   './js/app.js',
   './js/crypto.js',
   './games/memory.js',
+  './games/runner.js',
   './fonts/space-grotesk.woff2',
   './manifest.webmanifest',
   './icons/icon.svg',

@@ -100,6 +100,75 @@ Ungültige oder fehlende Werte fallen stillschweigend auf den Standard zurück
 }
 ```
 
+---
+
+## Neon-Runner (`runner`)
+
+Endlos-Läufer im Synthwave-Look: Ein leuchtender Gleiter rast über eine
+Neon-Straße mit 3 Spuren auf eine gestreifte Sonne zu. Pinke Hindernisse
+kommen entgegen, cyanfarbene Lichter werden eingesammelt. Das Tempo steigt
+mit der Zeit. Wer das Ziel an Lichtern erreicht, gewinnt.
+
+- **Steuerung:** Wischen links/rechts = Spur wechseln, nach oben = springen,
+  nach unten = ducken (in der Luft: schnell landen). Am Computer auch
+  Pfeiltasten/WASD/Leertaste.
+- **Hindernisse:** Wand (Spur wechseln), niedrige Schranke mit Warnstreifen
+  (springen), schwebender Balken auf Pfosten (ducken). Jede Reihe lässt
+  mindestens einen Weg frei.
+- **Leben:** Ein Crash kostet ein Leben, danach ist man kurz unverwundbar
+  (Gleiter blinkt). Sind alle Leben weg: Karte „Crash", `onFail` wird
+  aufgerufen, „Nochmal" startet neu. Jeder weitere Versuch beginnt etwas
+  langsamer (bis max. 28 % langsamer), damit es nicht frustriert.
+- **Sieg:** Hindernisse zerspringen, der Gleiter schießt Richtung Horizont,
+  Karte „Geschafft", nach ca. 2 s `onWin` (genau einmal).
+- **Pause:** Wird die App verlassen, hält das Spiel an und zeigt „Pause";
+  „Weiter" startet mit kurzem Countdown.
+- **Grafik:** Alles live auf Canvas gezeichnet (keine Bilddateien):
+  Sternenhimmel, Sonne mit Streifen, Neon-Berge, bewegtes Gitter,
+  Leuchtkanten, Partikel, Lichtspur, Kamera-Neigung und Wackeln beim Crash.
+  Bei „Bewegung reduzieren" entfallen Wackeln und Neigung, Partikel werden
+  weniger. Ruckelt ein Gerät, senkt das Spiel automatisch die Auflösung.
+- Farben: Cyan (Spieler, Lichter) und Magenta (Hindernisse, Kulisse), dazu
+  Orange-Gelb in der Sonne – bewusste Ausnahme vom Design-System für den
+  Wow-Effekt. Die Karten und Knöpfe folgen „Neon-Route".
+- Dauer mit Standardwerten: ca. 50–90 Sekunden.
+- Datei: `games/runner.js` (ca. 51 KB), Testseite: `games/runner.html`.
+  `_snapshot()` am Rückgabeobjekt liefert den Spielstand nur lesend für
+  automatisierte Tests; die App braucht es nicht.
+
+### Parameter
+
+| Parameter | Typ | Standard | Bedeutung |
+|---|---|---|---|
+| `goal` | Zahl | `60` | So viele Lichter muss man sammeln (3–500). |
+| `lives` | Zahl | `3` | Leben pro Versuch (1–9). |
+| `difficulty` | Zahl | `2` | 1 = gemütlich, 2 = normal, 3 = schnell. Bestimmt Start-/Höchsttempo und Abstand der Hindernisse. |
+| `title` | Text | `"Neon-Runner"` | Überschrift der Startkarte. |
+| `label` | Text | `"Minispiel"` | Kleine Zeile über den Überschriften. |
+| `intro` | Text | `"Sammle die Lichter und weiche den pinken Hindernissen aus."` | Anleitungstext auf der Startkarte (die Steuerung wird automatisch darunter erklärt). |
+| `winText` | Text | `"Ziel erreicht"` | Text auf der Sieg-Karte. |
+| `startText` | Text | `"Los geht's"` | Beschriftung des Startknopfs. |
+
+### Beispiel für eine Stadt-Datei
+
+```json
+"riddle": {
+  "type": "game",
+  "game": "runner",
+  "params": {
+    "goal": 50,
+    "lives": 3,
+    "difficulty": 2,
+    "title": "Flucht vom Schlossplatz",
+    "intro": "Die Uhr tickt! Sammle 50 Lichter, bevor die Zeit abläuft.",
+    "winText": "Entkommen! Weiter zur nächsten Station.",
+    "startText": "Los geht's"
+  },
+  "question": "Vor dir liegt die Neon-Route. Schaffst du die Strecke?",
+  "hint": "Bleib in der Mitte – von dort erreichst du jede Spur mit einem Wisch."
+}
+```
+
 ### Hinweis für den Einbau in die App
 
 Der Service Worker der App (`sw.js`) liefert Dateien aus seinem Cache. Neue
