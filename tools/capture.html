@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Screenshot-Helfer</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #070b14; }
+    body { display: flex; align-items: center; justify-content: center; }
+    /* Festes Handy-Format – Headless-Chrome erzwingt eine Mindest-Fensterbreite,
+       deshalb wird das Fenster größer gewählt und später auf 390×844 zugeschnitten */
+    iframe { width: 390px; height: 844px; border: none; display: block; }
+  </style>
+</head>
+<body>
+  <!-- Lädt die App und navigiert automatisch zum gewünschten Screen.
+       Nutzung: capture.html?screen=start|station|riddle&code=STARTCODE
+       Nur für lokale Design-Screenshots gedacht. -->
+  <iframe id="frame"></iframe>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const target = params.get('screen') || 'start';
+    const code = params.get('code') || '';
+
+    // Gleicher Origin wie die App → localStorage vorbereiten
+    if (code) localStorage.setItem('schnitzeljagd:code:stuttgart', code);
+    localStorage.removeItem('schnitzeljagd:stuttgart'); // frischer Fortschritt
+
+    const frame = document.getElementById('frame');
+    frame.src = '../index.html';
+
+    frame.onload = async () => {
+      const w = frame.contentWindow;
+      const d = frame.contentDocument;
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      await sleep(800);
+      if (target === 'start') return;
+
+      d.querySelector('.city-card').click();
+      await sleep(3000); // Entschlüsselung (PBKDF2) abwarten
+      if (target === 'intro') return;
+
+      d.getElementById('btn-start-hunt').click();
+      await sleep(1000);
+      w.setTestMode(true);
+      d.getElementById('testbar').style.display = 'none';
+      await sleep(200);
+
+      if (target === 'station') {
+        // ~110 m vor Station 1: zeigt Distanz + Zielnähe-Glow
+        w.handlePosition(48.77955, 9.17985, 8);
+        return;
+      }
+      if (target === 'riddle') {
+        w.teleportToTarget();
+        await sleep(400);
+      }
+    };
+  </script>
+</body>
+</html>

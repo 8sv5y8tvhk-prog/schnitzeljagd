@@ -1,0 +1,27 @@
+{
+  "name": "Schnitzeljagd",
+  "short_name": "Schnitzeljagd",
+  "description": "Selbstgebaute Schnitzeljagd durch die Stadt",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1423",
+  "theme_color": "#1a1423",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

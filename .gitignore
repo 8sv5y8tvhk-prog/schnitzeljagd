@@ -1,0 +1,14 @@
+# NIEMALS hochladen: Klartext-Städte und Startcodes
+data-src/
+CODES.local.md
+
+# Lokales Werkzeug/System
+.claude/
+.DS_Store
+
+# Design-Arbeitsordner (Screenshots zeigen Klartext-Story)
+design/
+
+# Interne Projekt-Doku (nur lokal, gehört nicht in die öffentliche App)
+CLAUDE.md
+TODO.md

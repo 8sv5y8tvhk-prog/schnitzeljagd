@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1423">
+  <title>Schnitzeljagd</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Startbildschirm: Stadt wählen -->
+  <section id="screen-start" class="screen active">
+    <div class="start-hero">
+      <p class="subtitle">Start · Abenteuerwahl</p>
+      <h1 id="app-title">Schnitzel&shy;jagd</h1>
+    </div>
+    <div id="city-list" class="city-list"></div>
+    <p class="footnote">Tipp: Füge die Seite deinem Homescreen hinzu,<br>dann fühlt sie sich wie eine App an.</p>
+  </section>
+
+  <!-- Startcode-Abfrage für verschlüsselte Städte -->
+  <section id="screen-code" class="screen">
+    <div class="start-hero">
+      <div class="start-emblem" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      </div>
+      <p class="subtitle" id="code-city-name"></p>
+      <h1>Versiegelt</h1>
+    </div>
+    <div class="riddle-card">
+      <div class="riddle-text">Dieses Abenteuer ist mit einem Geheimcode versiegelt. Gib den Startcode ein, den du bekommen hast.</div>
+      <input id="code-input" type="text" autocomplete="off" autocapitalize="characters"
+             placeholder="Startcode …">
+      <button id="btn-code-ok" class="btn btn-primary">Siegel brechen</button>
+      <div id="code-feedback" class="riddle-feedback"></div>
+    </div>
+    <button id="btn-code-back" class="btn btn-ghost">Zurück</button>
+  </section>
+
+  <!-- Story-Intro -->
+  <section id="screen-intro" class="screen">
+    <div class="paper">
+      <h2 id="intro-title"></h2>
+      <div id="intro-text" class="story-text"></div>
+    </div>
+    <button id="btn-start-hunt" class="btn btn-primary">Das Abenteuer beginnen</button>
+    <button id="btn-back-home" class="btn btn-ghost">Zurück</button>
+  </section>
+
+  <!-- Station: hinlaufen + Rätsel -->
+  <section id="screen-station" class="screen">
+    <header class="hud">
+      <button id="btn-menu-home" class="hud-btn" title="Zur Übersicht" aria-label="Zur Übersicht">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      </button>
+      <div class="progress-wrap">
+        <div class="progress-label" id="progress-label"></div>
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+      </div>
+      <button id="btn-testmode" class="hud-btn" title="Testmodus" aria-label="Testmodus">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1"/></svg>
+      </button>
+    </header>
+    <div id="emblem-row" class="emblem-row"></div>
+
+    <div class="paper">
+      <h2 id="station-title"></h2>
+      <div id="station-story" class="story-text"></div>
+    </div>
+
+    <!-- Phase 1: Auf dem Weg -->
+    <div id="phase-travel" class="phase">
+      <div class="compass-card">
+        <div class="pulse-ring"></div>
+        <div id="distance-display" class="distance">– m</div>
+        <div id="gps-status" class="gps-status">Warte auf GPS-Signal …</div>
+      </div>
+      <button id="btn-arrived-manual" class="btn btn-ghost hidden">Ich stehe am Ziel – weiter zum Rätsel</button>
+      <button id="btn-hint" class="btn btn-ghost">Ich brauche einen Tipp</button>
+      <div id="hint-box" class="hint-box hidden"></div>
+    </div>
+
+    <!-- Phase 2: Angekommen, Rätsel lösen -->
+    <div id="phase-riddle" class="phase hidden">
+      <div class="arrived-banner">Du bist am Ziel</div>
+      <div class="riddle-card">
+        <div id="riddle-text" class="riddle-text"></div>
+        <div id="choice-buttons" class="choice-buttons hidden"></div>
+        <input id="riddle-input" type="text" autocomplete="off" autocapitalize="off"
+               placeholder="Deine Antwort …">
+        <button id="btn-check" class="btn btn-primary">Antwort prüfen</button>
+        <div id="riddle-feedback" class="riddle-feedback"></div>
+        <button id="btn-riddle-hint" class="btn btn-ghost">Rätsel-Tipp</button>
+        <div id="riddle-hint-box" class="hint-box hidden"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Station gelöst: Zwischenstory -->
+  <section id="screen-solved" class="screen">
+    <div class="solved-emblem" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.3 2.3 4.7-5"/></svg>
+    </div>
+    <div class="paper">
+      <div id="solved-text" class="story-text"></div>
+    </div>
+    <div id="solved-photo-slot"></div>
+    <button id="btn-next-station" class="btn btn-primary">Weiter geht's</button>
+  </section>
+
+  <!-- Finale -->
+  <section id="screen-finale" class="screen">
+    <div class="finale-emblem" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h13l-2.5 4L18 12H5"/></svg>
+    </div>
+    <div class="paper">
+      <h2 id="finale-title"></h2>
+      <div id="finale-text" class="story-text"></div>
+      <div id="finale-personal" class="personal-note hidden"></div>
+    </div>
+    <div id="finale-photo-slot"></div>
+    <button id="btn-album" class="btn btn-ghost">Unser Album</button>
+    <button id="btn-cert" class="btn btn-ghost">Urkunde ansehen</button>
+    <button id="btn-finish" class="btn btn-primary">Abenteuer abschließen</button>
+  </section>
+
+  <!-- Foto-Sektion (wird je nach Screen umgehängt) -->
+  <div id="photo-section" class="photo-section hidden">
+    <div id="photo-task" class="photo-task"></div>
+    <img id="photo-preview" class="photo-preview hidden" alt="Euer Foto">
+    <label class="btn btn-ghost photo-btn" for="photo-input">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="14" r="3.4"/></svg>
+      Foto aufnehmen
+    </label>
+    <input id="photo-input" type="file" accept="image/*" capture="environment" hidden>
+  </div>
+
+  <!-- Album -->
+  <section id="screen-album" class="screen">
+    <p class="subtitle" id="album-subtitle"></p>
+    <h2 class="album-title">Unser Album</h2>
+    <div id="album-grid" class="album-grid"></div>
+    <button id="btn-album-download" class="btn btn-ghost hidden">Alle Fotos herunterladen (ZIP)</button>
+    <p class="footnote">Die Fotos bleiben nur auf diesem Handy gespeichert.</p>
+    <button id="btn-album-back" class="btn btn-primary">Zurück</button>
+  </section>
+
+  <!-- Urkunde -->
+  <section id="screen-cert" class="screen">
+    <div class="cert" id="cert-card">
+      <div class="cert-border">
+        <div class="cert-emblem" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="m8.8 13.6-2 6.4 5.2-2.6 5.2 2.6-2-6.4"/></svg>
+        </div>
+        <div class="cert-heading">Urkunde</div>
+        <div class="cert-sub">für das Bestehen der Schnitzeljagd</div>
+        <div class="cert-title" id="cert-title"></div>
+        <div class="cert-city" id="cert-city"></div>
+        <div class="cert-stats" id="cert-stats"></div>
+        <div class="cert-emblems" id="cert-emblems"></div>
+        <div class="cert-date" id="cert-date"></div>
+      </div>
+    </div>
+    <p class="footnote">Mach einen Screenshot als Andenken</p>
+    <button id="btn-cert-back" class="btn btn-primary">Zurück</button>
+  </section>
+
+  <!-- Testmodus-Leiste -->
+  <div id="testbar" class="testbar hidden">
+    <span>Testmodus</span>
+    <button id="btn-teleport" class="btn-mini">Zum Ziel teleportieren</button>
+    <button id="btn-test-off" class="btn-mini">Aus</button>
+  </div>
+
+  <canvas id="confetti" class="confetti hidden"></canvas>
+
+  <script src="js/crypto.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

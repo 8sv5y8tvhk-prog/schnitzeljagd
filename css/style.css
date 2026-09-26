@@ -1,0 +1,571 @@
+/* ── Schnitzeljagd – Design-System „Neon-Route" ──────────────────
+ * Dunkel, technisch-sportlich. Cyan als einziger Akzent,
+ * Space Grotesk als einzige Schrift, links die animierte
+ * Route-Linie als roter Faden durch alle Screens.
+ */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('../fonts/space-grotesk.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --bg: #0a0e14;
+  --cyan: #40dcff;
+  --cyan-30: rgba(64, 220, 255, 0.3);
+  --cyan-40: rgba(64, 220, 255, 0.4);
+  --cyan-50: rgba(64, 220, 255, 0.5);
+  --text: #eaf6fb;
+  --text-2: rgba(234, 246, 251, 0.68);
+  --text-3: rgba(234, 246, 251, 0.42);
+  --on-cyan: #04121a;
+  --paper: #ffffff;
+  --paper-ink: #10151c;
+  --paper-ink-2: #4b5865;
+  --paper-line: #dde5ec;
+  --ok: #4ade80;
+  --err: #fb7185;
+  --radius-card: 18px;
+  --radius-btn: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { min-height: 100%; }
+
+body {
+  font-family: 'Space Grotesk', -apple-system, sans-serif;
+  background: radial-gradient(120% 70% at 85% 0%, #0d2230 0%, var(--bg) 55%) fixed;
+  color: var(--text);
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  overflow-x: hidden;
+}
+
+/* ── Screens: Route-Linie links, Content rechts eingerückt ── */
+.screen {
+  display: none;
+  position: relative;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 28px 18px 90px 96px;
+  min-height: 100vh;
+}
+.screen.active { display: flex; }
+
+/* Die Route: animierte gestrichelte Linie, wandert langsam nach oben */
+.screen::before {
+  content: '';
+  position: absolute;
+  left: 56px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-image: linear-gradient(
+    to bottom,
+    var(--cyan-50) 0, var(--cyan-50) 14px,
+    transparent 14px, transparent 28px
+  );
+  background-size: 2px 28px;
+  animation: dashMove 1.4s linear infinite;
+  pointer-events: none;
+}
+@keyframes dashMove {
+  to { background-position-y: -28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen::before, .pulse-ring, .emblem.current { animation: none !important; }
+}
+
+/* Einblenden: dezent von unten */
+.screen.active > * {
+  animation: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.screen.active > *:nth-child(2) { animation-delay: 0.05s; }
+.screen.active > *:nth-child(3) { animation-delay: 0.10s; }
+.screen.active > *:nth-child(4) { animation-delay: 0.15s; }
+.screen.active > *:nth-child(n+5) { animation-delay: 0.20s; }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px); }
+}
+
+.hidden { display: none !important; }
+
+/* ── Typografie ── */
+.eyebrow, .subtitle, .progress-label, #album-subtitle {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--cyan);
+}
+h1 {
+  font-size: clamp(38px, 12.5vw, 52px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  color: var(--text);
+}
+h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+
+/* ── Neon-Karten (Grundbaustein) ── */
+.city-card, .compass-card, .riddle-card, .hint-box, .photo-section {
+  border: 1px solid var(--cyan-30);
+  border-radius: var(--radius-card);
+  background: linear-gradient(160deg, rgba(64, 220, 255, 0.08), rgba(64, 220, 255, 0.02));
+  animation: glowPulse 3s ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(64, 220, 255, 0.10), inset 0 0 14px rgba(64, 220, 255, 0.04); }
+  50%      { box-shadow: 0 0 26px rgba(64, 220, 255, 0.22), inset 0 0 20px rgba(64, 220, 255, 0.08); }
+}
+
+/* ── Start ── */
+.start-hero { margin-top: 6vh; }
+.start-hero .subtitle { margin-top: 14px; }
+.start-emblem { color: var(--cyan); margin-bottom: 18px; }
+.start-emblem svg { width: 44px; height: 44px; }
+
+.city-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+
+.city-card {
+  padding: 20px 18px;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.city-card:active { transform: scale(0.98); }
+.city-card .city-name { font-weight: 700; font-size: 22px; letter-spacing: -0.01em; }
+.city-card .city-tagline { color: var(--text-2); font-size: 13.5px; margin-top: 6px; line-height: 1.5; }
+.city-card .city-progress {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 5px 12px;
+  border: 1px solid var(--cyan-40);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--cyan);
+}
+
+.footnote { color: var(--text-3); font-size: 12.5px; line-height: 1.6; margin-top: auto; }
+
+/* ── Papier: modernes weißes Blatt für Story & Urkunde ── */
+.paper {
+  background: var(--paper);
+  color: var(--paper-ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius-card);
+  padding: 22px 20px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+}
+.paper h2 { margin-bottom: 12px; }
+.story-text { font-size: 15px; line-height: 1.7; white-space: pre-line; }
+
+/* ── Buttons ── */
+.btn {
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius-btn);
+  min-height: 52px;
+  padding: 14px 18px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-primary {
+  background: var(--cyan);
+  color: var(--on-cyan);
+  box-shadow: 0 6px 28px rgba(64, 220, 255, 0.45);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 36px rgba(64, 220, 255, 0.6); }
+.btn-primary:active { transform: translateY(0); }
+.btn-ghost {
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--cyan-30);
+  font-weight: 500;
+  font-size: 15px;
+}
+.btn-ghost:hover { border-color: var(--cyan-50); color: var(--text); }
+
+/* ── HUD ── */
+.hud { display: flex; align-items: center; gap: 12px; }
+.hud-btn {
+  background: transparent;
+  border: 1px solid var(--cyan-30);
+  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+.hud-btn svg { width: 20px; height: 20px; }
+.progress-wrap { flex: 1; }
+.progress-label { margin-bottom: 6px; text-align: center; display: block; }
+.progress-bar {
+  height: 4px;
+  background: rgba(64, 220, 255, 0.12);
+  border-radius: 99px;
+  overflow: hidden;
+}
+#progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--cyan);
+  border-radius: 99px;
+  transition: width 0.6s ease;
+  box-shadow: 0 0 10px rgba(64, 220, 255, 0.8);
+}
+
+/* ── Stations-Punkte auf der Route-Linie ── */
+.emblem-row {
+  position: absolute;
+  left: 56px;
+  top: 150px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  z-index: 1;
+}
+.emblem {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid rgba(64, 220, 255, 0.35);
+  background: var(--bg);
+  transition: all 0.4s ease;
+}
+.emblem.earned { border-color: var(--cyan); }
+.emblem.current {
+  width: 17px;
+  height: 17px;
+  background: var(--cyan);
+  border-color: var(--cyan);
+  animation: dotPulse 2.2s ease-out infinite;
+}
+@keyframes dotPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(64, 220, 255, 0.5); }
+  70%  { box-shadow: 0 0 0 14px rgba(64, 220, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(64, 220, 255, 0); }
+}
+
+/* ── Kompass / Distanz ── */
+.phase { display: flex; flex-direction: column; gap: 14px; }
+.compass-card {
+  position: relative;
+  padding: 32px 16px;
+  text-align: center;
+  overflow: hidden;
+}
+.compass-card.near { border-color: rgba(74, 222, 128, 0.5); }
+.pulse-ring {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 140px; height: 140px;
+  border: 1.5px solid var(--cyan);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  /* --pulse wird von der App je nach Zielnähe gesetzt: nah = schnell */
+  animation: pulse var(--pulse, 2.4s) ease-out infinite;
+  pointer-events: none;
+}
+.compass-card.near .pulse-ring { border-color: var(--ok); }
+@keyframes pulse {
+  0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0.55; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+.distance {
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--cyan);
+}
+.gps-status { color: var(--text-3); font-size: 13px; margin-top: 8px; }
+
+.hint-box {
+  animation: none;
+  border-left: 2px solid var(--cyan);
+  border-radius: 0 var(--radius-card) var(--radius-card) 0;
+  padding: 14px 16px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+.hint-box a { color: var(--cyan); }
+
+/* ── Rätsel ── */
+.arrived-banner {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--ok);
+  text-align: center;
+}
+.riddle-card {
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.riddle-text { font-size: 15.5px; line-height: 1.65; color: var(--text); }
+#riddle-input, #code-input {
+  font-family: inherit;
+  background: rgba(64, 220, 255, 0.05);
+  border: 1px solid var(--cyan-30);
+  border-radius: var(--radius-btn);
+  padding: 14px;
+  font-size: 16px;
+  color: var(--text);
+  width: 100%;
+}
+#riddle-input:focus, #code-input:focus {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(64, 220, 255, 0.18);
+}
+.riddle-feedback { min-height: 22px; font-size: 14px; text-align: center; }
+.riddle-feedback.ok { color: var(--ok); }
+.riddle-feedback.err { color: var(--err); }
+
+/* ── Multiple Choice ── */
+.choice-buttons { display: flex; flex-direction: column; gap: 10px; }
+.btn-choice {
+  background: rgba(64, 220, 255, 0.04);
+  border: 1px solid var(--cyan-30);
+  color: var(--text);
+  font-weight: 500;
+  font-size: 15px;
+  text-align: left;
+  min-height: 48px;
+}
+.btn-choice.choice-ok {
+  border-color: var(--ok);
+  color: var(--ok);
+  box-shadow: 0 0 14px rgba(74, 222, 128, 0.35);
+}
+.btn-choice.choice-err { border-color: var(--err); color: var(--err); opacity: 0.55; }
+
+/* ── Startcode / Siegel ── */
+.seal-break {
+  animation: sealBreak 0.7s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards !important;
+}
+@keyframes sealBreak {
+  0%   { transform: rotate(0); }
+  20%  { transform: rotate(-12deg) scale(1.05); }
+  40%  { transform: rotate(10deg) scale(1.12); }
+  60%  { transform: rotate(-6deg) scale(1.2); filter: drop-shadow(0 0 30px rgba(64, 220, 255, 0.9)); }
+  100% { transform: scale(1.6); opacity: 0; filter: drop-shadow(0 0 44px rgba(64, 220, 255, 1)); }
+}
+
+/* ── Foto-Momente ── */
+.photo-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-style: dashed;
+  padding: 16px;
+  animation: none;
+}
+.photo-task { font-size: 14.5px; line-height: 1.55; color: var(--text-2); }
+.photo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--cyan);
+}
+.photo-btn svg { width: 18px; height: 18px; }
+.photo-preview {
+  width: 100%;
+  border-radius: 12px;
+  max-height: 320px;
+  object-fit: cover;
+}
+
+/* ── Album ── */
+.album-title { margin-top: 10px; }
+.album-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.album-item {
+  background: var(--paper);
+  border: 1px solid var(--paper-line);
+  border-radius: 12px;
+  padding: 7px 7px 9px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+.album-item img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+.album-item figcaption {
+  color: var(--paper-ink);
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 6px;
+}
+.album-download {
+  display: block;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--paper-ink-2);
+  margin-top: 3px;
+  text-decoration: none;
+}
+.album-link {
+  background: transparent;
+  border: 1px solid var(--cyan-30);
+  border-radius: var(--radius-btn);
+  padding: 13px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+/* ── Gelöst / Finale ── */
+.solved-emblem, .finale-emblem {
+  color: var(--cyan);
+  text-align: left;
+  margin-top: 5vh;
+  animation: pop 0.5s ease;
+}
+.solved-emblem svg, .finale-emblem svg { width: 46px; height: 46px; }
+@keyframes pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.personal-note {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px dashed var(--cyan-40);
+  border-radius: 12px;
+  font-style: italic;
+  font-size: 15.5px;
+  line-height: 1.65;
+  white-space: pre-line;
+  color: var(--paper-ink);
+}
+
+/* ── Urkunde: modernes weißes Blatt ── */
+.cert {
+  background: var(--paper);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius-card);
+  padding: 12px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+  margin-top: 3vh;
+}
+.cert-border {
+  border: 1px solid var(--paper-line);
+  border-radius: 12px;
+  padding: 26px 16px;
+  text-align: center;
+  color: var(--paper-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cert-emblem { color: #0e9cbf; }
+.cert-emblem svg { width: 40px; height: 40px; }
+.cert-heading {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.cert-sub { color: #0e9cbf; }
+.cert-title { font-size: 18px; font-weight: 700; margin-top: 6px; }
+.cert-city {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--paper-ink-2);
+}
+.cert-stats { font-size: 14px; line-height: 1.7; margin-top: 8px; color: var(--paper-ink-2); }
+.cert-emblems {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  position: static;
+  transform: none;
+  flex-direction: row;
+  margin-top: 6px;
+}
+.cert-emblems .emblem {
+  width: 12px; height: 12px;
+  border-color: #0e9cbf;
+  background: #0e9cbf;
+  animation: none;
+}
+.cert-date { font-size: 13px; color: var(--paper-ink-2); margin-top: 4px; }
+
+/* ── Konfetti ── */
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ── Testmodus ── */
+.testbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: rgba(10, 14, 20, 0.92);
+  border-top: 1px solid var(--cyan-30);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px calc(10px + env(safe-area-inset-bottom)) 10px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-3);
+  z-index: 50;
+}
+.btn-mini {
+  font-family: inherit;
+  background: transparent;
+  color: var(--cyan);
+  border: 1px solid var(--cyan-40);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}

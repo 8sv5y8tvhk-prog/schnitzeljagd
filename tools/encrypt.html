@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stadt-Datei verschlüsseln</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #1a1423; color: #efe6f7;
+      max-width: 720px; margin: 0 auto; padding: 24px 18px;
+    }
+    h1 { font-size: 22px; }
+    p { color: #a99bc0; font-size: 14px; line-height: 1.55; }
+    label { display: block; margin: 18px 0 6px; font-weight: 600; font-size: 14px; }
+    textarea, input {
+      width: 100%; box-sizing: border-box;
+      background: #241b31; color: #efe6f7;
+      border: 1px solid #3a2d4e; border-radius: 10px;
+      padding: 12px; font-size: 14px;
+    }
+    textarea { min-height: 180px; font-family: ui-monospace, monospace; }
+    button {
+      margin-top: 16px; padding: 14px 20px; border: none; border-radius: 10px;
+      background: linear-gradient(180deg, #e0a458, #b97f35); color: #241503;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+    button.secondary { background: #3a2d4e; color: #efe6f7; }
+    .status { margin-top: 12px; font-size: 14px; min-height: 20px; }
+    .ok { color: #7bc47f; } .err { color: #e07070; }
+  </style>
+</head>
+<body>
+  <h1>🔐 Stadt-Datei verschlüsseln</h1>
+  <p>
+    Klartext-JSON aus <code>data-src/</code> unten einfügen, Startcode wählen,
+    verschlüsseln – und die Ausgabe als <code>data/&lt;stadt&gt;.enc.json</code> speichern.
+    Alles passiert lokal in deinem Browser, nichts wird gesendet.
+    Der Code ist unempfindlich gegen Groß-/Kleinschreibung und Leerzeichen.
+  </p>
+
+  <label for="src">Klartext-JSON der Stadt</label>
+  <textarea id="src" placeholder='{ "id": "stuttgart", "title": … }'></textarea>
+
+  <label for="code">Startcode</label>
+  <input id="code" type="text" placeholder="z. B. GEHEIM42">
+
+  <button id="btn-encrypt">Verschlüsseln</button>
+  <button id="btn-download" class="secondary" style="display:none">💾 .enc.json herunterladen</button>
+  <div class="status" id="status"></div>
+
+  <label for="out">Verschlüsselte Ausgabe</label>
+  <textarea id="out" readonly></textarea>
+
+  <script src="../js/crypto.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let lastResult = null;
+    let lastId = 'stadt';
+
+    $('btn-encrypt').addEventListener('click', async () => {
+      const status = $('status');
+      status.className = 'status';
+      try {
+        const obj = JSON.parse($('src').value);
+        const code = $('code').value;
+        if (HuntCrypto.normalizeCode(code).length < 4) {
+          throw new Error('Der Startcode sollte mindestens 4 Zeichen haben.');
+        }
+        lastId = obj.id || 'stadt';
+        lastResult = await HuntCrypto.encrypt(obj, code);
+
+        // Gegenprobe: sofort wieder entschlüsseln und vergleichen
+        const roundtrip = await HuntCrypto.decrypt(lastResult, code);
+        if (JSON.stringify(roundtrip) !== JSON.stringify(obj)) {
+          throw new Error('Gegenprobe fehlgeschlagen – bitte erneut versuchen.');
+        }
+
+        $('out').value = JSON.stringify(lastResult);
+        $('btn-download').style.display = 'inline-block';
+        status.textContent = `✅ Verschlüsselt & Gegenprobe bestanden. Als data/${lastId}.enc.json speichern.`;
+        status.className = 'status ok';
+      } catch (e) {
+        $('out').value = '';
+        $('btn-download').style.display = 'none';
+        status.textContent = `❌ ${e.message}`;
+        status.className = 'status err';
+      }
+    });
+
+    $('btn-download').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(lastResult)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${lastId}.enc.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    });
+  </script>
+</body>
+</html>

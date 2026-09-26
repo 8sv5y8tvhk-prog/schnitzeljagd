@@ -1,0 +1,19 @@
+{
+  "cities": [
+    {
+      "id": "nuertingen",
+      "name": "Nürtingen",
+      "tagline": "Systemcheck · ca. 0,5 km · 3 Stationen · ~10 min · Start: Parkhaus K3N",
+      "file": "nuertingen.enc.json",
+      "encrypted": true
+    },
+    {
+      "id": "stuttgart",
+      "name": "Stuttgart",
+      "emoji": "🕰️",
+      "tagline": "Das Geheimnis der Hofuhrmacherin · ca. 1,5 km zu Fuß · 6 Stationen",
+      "file": "stuttgart.enc.json",
+      "encrypted": true
+    }
+  ]
+}
