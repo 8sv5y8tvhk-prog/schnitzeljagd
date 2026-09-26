@@ -104,8 +104,9 @@ Ungültige oder fehlende Werte fallen stillschweigend auf den Standard zurück
 
 ## Neon-Runner (`runner`)
 
-Endlos-Läufer im Synthwave-Look: Ein leuchtender Gleiter rast über eine
-Neon-Straße mit 3 Spuren auf eine gestreifte Sonne zu. Pinke Hindernisse
+Endlos-Läufer im Synthwave-Look: Der **Neon-Lurch** – ein Feuersalamander
+aus Licht – flitzt über eine Neon-Straße mit 3 Spuren auf eine gestreifte
+Sonne zu. Pinke Hindernisse
 kommen entgegen, cyanfarbene Lichter werden eingesammelt. Das Tempo steigt
 mit der Zeit. Wer das Ziel an Lichtern erreicht, gewinnt.
 
@@ -115,24 +116,43 @@ mit der Zeit. Wer das Ziel an Lichtern erreicht, gewinnt.
 - **Hindernisse:** Wand (Spur wechseln), niedrige Schranke mit Warnstreifen
   (springen), schwebender Balken auf Pfosten (ducken). Jede Reihe lässt
   mindestens einen Weg frei.
-- **Leben:** Ein Crash kostet ein Leben, danach ist man kurz unverwundbar
-  (Gleiter blinkt). Sind alle Leben weg: Karte „Crash", `onFail` wird
+- **Der Lurch:** schlängelt sich beim Laufen (Körperwelle, diagonaler
+  Gang, Schwanz schwingt nach), hinterlässt leuchtende Fußspuren und einen
+  Lichtschweif. Leuchtflecken pulsieren, die Kulleraugen blinzeln und schauen
+  beim Spurwechsel zur Seite. Lichter holt er sich mit der pinken Zunge
+  (Backen blähen sich danach). Sprung = Froschsprung mit gestreckten Beinen
+  und hochgerolltem Schwanz, Landung mit Plumps. Ducken = Bauchplatscher mit
+  zugekniffenen Augen, paddelnden Beinen und Funken. Im Countdown und beim
+  Sieg dreht er sich zur Kamera und grinst.
+- **Leben:** Ein Crash kostet ein Leben: Spiralaugen, kreisende Sternchen,
+  danach ist der Lurch kurz unverwundbar (blinkt). Sind alle Leben weg: Karte „Crash", `onFail` wird
   aufgerufen, „Nochmal" startet neu. Jeder weitere Versuch beginnt etwas
   langsamer (bis max. 28 % langsamer), damit es nicht frustriert.
-- **Sieg:** Hindernisse zerspringen, der Gleiter schießt Richtung Horizont,
-  Karte „Geschafft", nach ca. 2 s `onWin` (genau einmal).
+- **Neon-Tunnel:** Etwa alle 30 Sekunden rast man durch eine Röhre aus
+  pulsierenden Ringen (Cyan/Magenta, Lichtpunkte an den Ecken). Drinnen
+  wird es dunkel, das Blickfeld weitet sich für mehr Tempo-Gefühl, und statt
+  Hindernissen wartet eine Lichterkette im Zickzack (Bonus).
+- **Nasse Straße:** Hindernisse, Lichter und Tunnelringe spiegeln sich weich
+  im Asphalt, die Sonne wirft einen flimmernden Spiegelstreifen. (Der Lurch
+  selbst spiegelt sich bewusst nicht – er ist so flach, dass es wie ein
+  verschwommener Doppelgänger aussah.)
+- **Game over:** Der Lurch liegt platt mit Spiralaugen und Sternchen da,
+  dann erscheint die Karte „Crash".
+- **Sieg:** Hindernisse zerspringen, Lichter platzen wie Feuerwerk, der Lurch
+  macht Freudensprünge, grinst in die Kamera und hüpft in den
+  Sonnenuntergang. Karte „Geschafft", nach ca. 2 s `onWin` (genau einmal).
 - **Pause:** Wird die App verlassen, hält das Spiel an und zeigt „Pause";
   „Weiter" startet mit kurzem Countdown.
 - **Grafik:** Alles live auf Canvas gezeichnet (keine Bilddateien):
   Sternenhimmel, Sonne mit Streifen, Neon-Berge, bewegtes Gitter,
-  Leuchtkanten, Partikel, Lichtspur, Kamera-Neigung und Wackeln beim Crash.
+  Leuchtkanten, Partikel, Kamera-Neigung und Wackeln beim Crash.
   Bei „Bewegung reduzieren" entfallen Wackeln und Neigung, Partikel werden
   weniger. Ruckelt ein Gerät, senkt das Spiel automatisch die Auflösung.
-- Farben: Cyan (Spieler, Lichter) und Magenta (Hindernisse, Kulisse), dazu
-  Orange-Gelb in der Sonne – bewusste Ausnahme vom Design-System für den
+- Farben: Cyan (Lurch, Lichter) und Magenta (Hindernisse, Kulisse, Zunge),
+  dazu Orange-Gelb in Sonne und Leuchtflecken – bewusste Ausnahme vom Design-System für den
   Wow-Effekt. Die Karten und Knöpfe folgen „Neon-Route".
-- Dauer mit Standardwerten: ca. 50–90 Sekunden.
-- Datei: `games/runner.js` (ca. 51 KB), Testseite: `games/runner.html`.
+- Dauer mit Standardwerten: ca. 50–100 Sekunden (Testpilot: 49 s beim Jagen jedes Lichts, 72 s beim reinen Ausweichen).
+- Datei: `games/runner.js` (ca. 75 KB), Testseite: `games/runner.html`.
   `_snapshot()` am Rückgabeobjekt liefert den Spielstand nur lesend für
   automatisierte Tests; die App braucht es nicht.
 
@@ -140,7 +160,7 @@ mit der Zeit. Wer das Ziel an Lichtern erreicht, gewinnt.
 
 | Parameter | Typ | Standard | Bedeutung |
 |---|---|---|---|
-| `goal` | Zahl | `60` | So viele Lichter muss man sammeln (3–500). |
+| `goal` | Zahl | `80` | So viele Lichter muss man sammeln (3–500). |
 | `lives` | Zahl | `3` | Leben pro Versuch (1–9). |
 | `difficulty` | Zahl | `2` | 1 = gemütlich, 2 = normal, 3 = schnell. Bestimmt Start-/Höchsttempo und Abstand der Hindernisse. |
 | `title` | Text | `"Neon-Runner"` | Überschrift der Startkarte. |

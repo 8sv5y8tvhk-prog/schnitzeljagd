@@ -8,7 +8,7 @@
   var NAME = 'runner';
 
   var DEFAULTS = {
-    goal: 60,
+    goal: 80,
     lives: 3,
     difficulty: 2,
     title: 'Neon-Runner',
@@ -206,6 +206,7 @@
     canvas.setAttribute('aria-label', 'Spielfeld');
     root.appendChild(canvas);
     var ctx = canvas.getContext('2d');
+    var mainCtx = ctx; // für den Spiegel-Durchgang wird ctx kurz umgeschaltet
 
     var hud = el('div', 'sg-runner__hud is-hidden');
     var livesBox = el('div', 'sg-runner__lives');
@@ -245,12 +246,20 @@
 
     // ── Zustand ──
     var W = 1, H = 1, dpr = 1, horizon = 0, F = 1, camY = 5, camX = 0;
+    var Fe = 1, camYe = 5, fov = 1;      // wirksame Brennweite/Kamerahöhe (Tunnel weitet das Bild)
+    var mirror = false;                  // true = Spiegelbild in der nassen Straße zeichnen
+    var refl = null, rctx = null, sunRefl = null;
+    var REFL_SCALE = 0.5;                // Spiegel in halber Auflösung (wirkt weich)
+    var TUN_R = 8;                       // Tunnelradius
+    var TUN_STEP = 5;                    // Abstand der Tunnelringe
+    var tunnels = [], nextTunnel = 0, tunIn = 0;
     var bg = null, bgW = 0, bgH = 0, floorGrad = null, roadGrad = null, vignette = null;
     var spr = {
       cyan: glowSprite(64, 220, 255),
       mag: glowSprite(255, 63, 180),
       white: glowSprite(220, 245, 255),
       green: glowSprite(74, 222, 128),
+      yellow: glowSprite(255, 211, 107),
       red: glowSprite(251, 113, 133)
     };
 
@@ -258,9 +267,15 @@
     var stateT = 0;
     var time = 0;
     var dist = 0, speed = 8, baseSpeed = diff.v0, runTime = 0;
-    var lane = 0, px = 0, py = 0, vy = 0, duckT = 0, invT = 0, bank = 0, roll = 0;
+    var lane = 0, px = 0, py = 0, vy = 0, duckT = 0, invT = 0, roll = 0;
     var playerZ = 0;
     var lives = cfg.lives, orbs = 0, attempts = 0;
+    // Animationszustand des Neon-Lurchs
+    var lu = {
+      gait: 0, wave: 0, flat: 0, sq: 0, look: 0, yaw: 0, tail: 0, lookBack: 1, blink: 0, nextBlink: 2,
+      gulp: 0, dizzy: 0, tongue: null, alpha: 1, lift: [0, 0, 0, 0], tipX: 0, tipY: 0.2, tipZ: -2
+    };
+    var footprints = [];
     var objects = [], particles = [], rings = [], trail = [], streaks = [];
     var nextSpawn = 0;
     var shake = 0, flash = 0, flashCol = '255,255,255';
@@ -290,9 +305,9 @@
     function proj(x, y, z, out) {
       var dz = z + CAM_D;
       if (dz < 0.05) dz = 0.05;
-      var s = F / dz;
+      var s = Fe / dz;
       out.x = W / 2 + (x - camX) * s;
-      out.y = horizon + (camY - y) * s;
+      out.y = horizon + (camYe - (mirror ? -y : y)) * s;
       out.s = s;
       return out;
     }
@@ -315,7 +330,16 @@
       horizon = H * 0.40;
       F = W * 0.70;
       camY = (H * 0.80 - horizon) * CAM_D / F;
+      Fe = F * fov;
+      camYe = camY * F / Fe;
       buildBackground();
+      if (!refl) {
+        refl = document.createElement('canvas');
+        rctx = refl.getContext('2d');
+      }
+      refl.width = Math.max(1, Math.round(W * dpr * REFL_SCALE));
+      refl.height = Math.max(1, Math.round(H * dpr * REFL_SCALE));
+      buildSunReflection();
       floorGrad = ctx.createLinearGradient(0, horizon, 0, H);
       floorGrad.addColorStop(0, '#1a0826');
       floorGrad.addColorStop(0.18, '#0b0718');
@@ -327,6 +351,31 @@
       vignette.addColorStop(0, 'rgba(0,0,0,0)');
       vignette.addColorStop(1, 'rgba(0,0,0,0.55)');
       if (hidden || state === 'paused') render();
+    }
+
+    // Weicher Spiegelstreifen der Sonne auf der nassen Straße
+    function buildSunReflection() {
+      var R = Math.min(W * 0.33, horizon * 0.62);
+      var w = Math.ceil(R * 2.2), h = Math.ceil((H - horizon) * 0.8);
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w * dpr * 0.5));
+      c.height = Math.max(1, Math.round(h * dpr * 0.5));
+      var g = c.getContext('2d');
+      g.scale(dpr * 0.5, dpr * 0.5);
+      var v = g.createLinearGradient(0, 0, 0, h);
+      v.addColorStop(0, 'rgba(255,200,110,0.95)');
+      v.addColorStop(0.35, 'rgba(255,90,170,0.6)');
+      v.addColorStop(1, 'rgba(170,50,255,0)');
+      g.fillStyle = v;
+      g.fillRect(0, 0, w, h);
+      g.globalCompositeOperation = 'destination-in';
+      var hz = g.createLinearGradient(0, 0, w, 0);
+      hz.addColorStop(0, 'rgba(0,0,0,0)');
+      hz.addColorStop(0.5, 'rgba(0,0,0,1)');
+      hz.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = hz;
+      g.fillRect(0, 0, w, h);
+      sunRefl = { c: c, w: w, h: h };
     }
 
     function buildBackground() {
@@ -541,10 +590,14 @@
       invT = 0;
       playerZ = 0;
       runTime = 0;
+      lu.dizzy = 0;
+      lu.tongue = null;
       failSent = false;
       // Nach jedem gescheiterten Versuch etwas ruhiger starten
       baseSpeed = diff.v0 * Math.max(0.72, 1 - 0.07 * attempts);
       nextSpawn = dist + 48;
+      tunnels = [];
+      nextTunnel = dist + 420;
       updateHud(false);
       hud.classList.remove('is-hidden');
       startCountdown();
@@ -568,18 +621,23 @@
       if (py > 0.02 || vy > 0) return;
       vy = JUMP_V;
       duckT = 0;
+      lu.sq = -0.9; // Strecken beim Absprung
       burst(px, 0.1, playerZ - 0.3, 8, spr.cyan, 3, 0.35);
     }
 
     function duck() {
       if (state !== 'run' && state !== 'countdown') return;
       if (py > 0.02) vy = Math.min(vy, -16); // schnell landen
+      if (duckT <= 0) lu.sq = 0.6;
       duckT = DUCK_T;
     }
 
     function crash(o) {
       lives--;
       invT = 1.6;
+      lu.dizzy = 1.7;
+      lu.sq = 0.9;
+      lu.tongue = null;
       shake = 0.55;
       flash = 1;
       flashCol = '251,113,133';
@@ -606,10 +664,16 @@
       stateT = 0;
       flash = 1;
       flashCol = '160,240,255';
-      objects.forEach(function (o) { if (o.type !== 'orb') shatter(o); });
-      objects = objects.filter(function (o) { return o.type === 'orb'; });
-      burst(px, py + 0.6, playerZ, 60, spr.green, 12, 1.4);
-      burst(px, py + 0.6, playerZ, 40, spr.cyan, 10, 1.2);
+      // Hindernisse zerspringen, übrige Lichter zerplatzen wie Feuerwerk
+      objects.forEach(function (o) {
+        if (o.type !== 'orb') shatter(o);
+        else if (o.z - dist < 60) burst(o.x, o.y, o.z - dist, 6, Math.random() < 0.5 ? spr.cyan : spr.yellow, 6, 0.8);
+      });
+      objects = [];
+      burst(px, py + 0.6, playerZ, 50, spr.green, 12, 1.4);
+      burst(px, py + 0.6, playerZ, 36, spr.cyan, 10, 1.2);
+      burst(px, py + 0.6, playerZ, 30, spr.yellow, 11, 1.3);
+      burst(px, py + 0.6, playerZ, 24, spr.mag, 10, 1.1);
     }
 
     function collect(o) {
@@ -654,44 +718,60 @@
 
     // ── Hindernis-Reihen: immer mindestens ein Weg frei ──
     function addWall(ln, z) { objects.push({ type: 'wall', x: ln * LANE, z: z, w: LANE * 0.8, d: 1.1, y0: 0, y1: 2.4 }); }
-    function addLow(ln, z) { objects.push({ type: 'low', x: ln * LANE, z: z, w: LANE * 0.94, d: 0.5, y0: 0, y1: 0.85 }); }
-    function addBeam(ln, z) { objects.push({ type: 'beam', x: ln * LANE, z: z, w: LANE * 0.94, d: 0.5, y0: 0.95, y1: 1.75 }); }
+    function addLow(ln, z) { objects.push({ type: 'low', x: ln * LANE, z: z, w: LANE * 0.94, d: 0.5, y0: 0, y1: 0.6 }); }
+    function addBeam(ln, z) { objects.push({ type: 'beam', x: ln * LANE, z: z, w: LANE * 0.94, d: 0.5, y0: 0.55, y1: 1.25 }); }
     function addOrbLine(ln, z0, n, y) {
       for (var i = 0; i < n; i++) {
-        objects.push({ type: 'orb', x: ln * LANE, z: z0 + i * 2.6, y: y || 0.75, ph: Math.random() * 6, w: 0, d: 0 });
+        objects.push({ type: 'orb', x: ln * LANE, z: z0 + i * 2.6, y: y || 0.6, ph: Math.random() * 6, w: 0, d: 0 });
       }
     }
     function addOrbArc(ln, zc) {
       for (var i = -2; i <= 2; i++) {
-        objects.push({ type: 'orb', x: ln * LANE, z: zc + i * 2.2, y: 0.8 + 1.1 * (1 - (i * i) / 5), ph: Math.random() * 6, w: 0, d: 0 });
+        objects.push({ type: 'orb', x: ln * LANE, z: zc + i * 2.2, y: 0.6 + 1.1 * (1 - (i * i) / 5), ph: Math.random() * 6, w: 0, d: 0 });
       }
+    }
+
+    // Bonus-Tunnel: Ringe aus Licht, drinnen eine Lichterkette im Zickzack
+    function spawnTunnel(z) {
+      var len = TUN_STEP * 26;
+      var t = { start: z + 6, end: z + 6 + len };
+      tunnels.push(t);
+      var ln = Math.floor(Math.random() * 3) - 1, dir = Math.random() < 0.5 ? -1 : 1;
+      for (var zz = t.start + 10; zz < t.end - 12; zz += 19) {
+        addOrbLine(ln, zz, 3);
+        if (ln + dir > 1 || ln + dir < -1) dir = -dir;
+        ln += dir;
+      }
+      nextSpawn = t.end + 18;
+      nextTunnel = t.end + rnd(650, 850);
     }
 
     function spawnRow() {
       var z = nextSpawn;
+      if (z >= nextTunnel) { spawnTunnel(z); return; }
       var prog = clamp(runTime / 60, 0, 1);
       var r = Math.random();
       var a = Math.floor(Math.random() * 3) - 1;
       var others = [-1, 0, 1].filter(function (l) { return l !== a; });
       var b = others[Math.floor(Math.random() * 2)];
-      var withOrbs = Math.random() < 0.62;
+      var withOrbs = Math.random() < 0.5;
 
       if (r < 0.16 - prog * 0.06) {
         // Nur Lichter (Verschnaufpause)
-        addOrbLine(a, z - 6, 5);
+        addOrbLine(a, z - 6, 4);
       } else if (r < 0.40) {
         addWall(a, z);
-        if (withOrbs) addOrbLine(b, z - 9, 4);
+        if (withOrbs) addOrbLine(b, z - 9, 3);
       } else if (r < 0.56 + prog * 0.04) {
         addWall(others[0], z);
         addWall(others[1], z);
-        if (withOrbs) addOrbLine(a, z - 9, 4);
+        if (withOrbs) addOrbLine(a, z - 9, 3);
       } else if (r < 0.70) {
         addLow(-1, z); addLow(0, z); addLow(1, z);
         if (withOrbs) addOrbArc(a, z);
       } else if (r < 0.84) {
         addBeam(-1, z); addBeam(0, z); addBeam(1, z);
-        if (withOrbs) addOrbLine(a, z - 5, 4, 0.35);
+        if (withOrbs) addOrbLine(a, z - 5, 3, 0.35);
       } else if (r < 0.93) {
         addWall(a, z);
         others.forEach(function (l) { addLow(l, z); });
@@ -742,19 +822,31 @@
         if (py <= 0) {
           py = 0;
           vy = 0;
+          lu.sq = 1; // Plumps beim Landen
           if (state === 'run' || state === 'countdown') burst(px, 0.05, playerZ - 0.2, 6, spr.cyan, 2.5, 0.3);
         }
       }
       if (duckT > 0) duckT = Math.max(0, duckT - dt);
       if (invT > 0) invT = Math.max(0, invT - dt);
       var lat = lane * LANE - px;
-      bank += (clamp(-lat * 0.22, -0.5, 0.5) - bank) * Math.min(1, dt * 12);
       var rollT = reduceMotion ? 0 : clamp(lat * 0.018, -0.045, 0.045);
       roll += (rollT - roll) * Math.min(1, dt * 8);
       camX += (px * 0.55 - camX) * Math.min(1, dt * 8);
+      updateLurch(dt, lat);
+
+      // Tunnel: drinnen dunkler und weiteres Blickfeld (Tempo-Gefühl)
+      var inT = 0;
+      for (var ti = tunnels.length - 1; ti >= 0; ti--) {
+        var tn = tunnels[ti];
+        if (tn.end - dist < -CAM_D - 4) { tunnels.splice(ti, 1); continue; }
+        if (dist > tn.start - 6 && dist < tn.end - 2) inT = 1;
+      }
+      tunIn += (inT - tunIn) * Math.min(1, dt * 3);
+      var fovT = !reduceMotion && inT && state === 'run' ? 0.84 : 1;
+      fov += (fovT - fov) * Math.min(1, dt * 1.8);
 
       if (state === 'won') {
-        playerZ += dt * (8 + stateT * 70);
+        if (stateT > 1.0) playerZ += dt * (stateT - 1.0) * 42; // erst umschauen, dann ab in den Sonnenuntergang
         if (stateT > 1.1 && !cardShown) {
           showCard({ label: cfg.label, title: 'Geschafft', titleClass: 'is-ok', text: cfg.winText, meta: orbs + ' von ' + cfg.goal + ' Lichtern' });
         }
@@ -763,7 +855,7 @@
           safeCall(onWin);
         }
       }
-      if (state === 'over' && stateT > 1.1 && !cardShown) {
+      if (state === 'over' && stateT > 1.6 && !cardShown) {
         showCard({
           label: cfg.label,
           title: 'Crash',
@@ -786,12 +878,15 @@
         if (o.dead || o.taken || rz < -CAM_D + NEAR - 1.5) continue;
         if (state === 'run') {
           if (o.type === 'orb') {
-            if (Math.abs(rz - playerZ) < 1.1 && Math.abs(o.x - px) < 1.05 && Math.abs(o.y - (py + 0.5)) < 1.15) {
+            var dzO = rz - playerZ;
+            if (dzO > -0.8 && dzO < 4.8 && Math.abs(o.x - px) < 1.05 && Math.abs(o.y - (py + 0.45)) < 1.2) {
               collect(o);
+              if (dzO > 1.2) lu.tongue = { x: o.x, y: o.y, z: rz, t: 0 }; // Zunge schnappt zu
+              lu.gulp = 0.3;
               continue;
             }
           } else if (invT <= 0 && rz - o.d / 2 < 1.0 && rz + o.d / 2 > -0.7 && Math.abs(o.x - px) < o.w / 2 + 0.45) {
-            var top = py + (duckT > 0 ? 0.5 : 1.15);
+            var top = py + (duckT > 0 ? 0.32 : 0.85);
             if (top > o.y0 && py < o.y1) {
               crash(o);
               continue;
@@ -822,9 +917,9 @@
       });
 
       // Lichtspur der Spielfigur
-      trail.unshift({ x: px, y: py, d: dist, duck: duckT > 0 });
-      while (trail.length > 2 && (trail[trail.length - 1].d - dist + playerZ - 0.55) < -CAM_D + NEAR + 0.2) trail.pop();
-      if (trail.length > 90) trail.length = 90;
+      trail.unshift({ x: lu.tipX, y: lu.tipY, z: lu.tipZ, d: dist });
+      while (trail.length > 2 && (trail[trail.length - 1].d - dist + trail[trail.length - 1].z) < -CAM_D + NEAR) trail.pop();
+      if (trail.length > 60) trail.length = 60;
 
       // Seitliche Tempo-Streifen
       for (var s = 0; s < streaks.length; s++) {
@@ -895,6 +990,21 @@
       ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = roadGrad;
       ctx.fill();
+
+      // Sonne spiegelt sich flimmernd im Asphalt (in Streifen, die mitlaufen)
+      if (sunRefl && tunIn < 0.99) {
+        var sr = sunRefl, cxS = W / 2 - camX * 7, n = 22, ph = (dist * 0.06) % 1;
+        ctx.globalAlpha = 0.55 * (1 - tunIn);
+        for (var q = 0; q < n; q++) {
+          var t0 = (q + ph) / n, t1 = (q + ph + 0.55) / n;
+          var y0 = Math.pow(t0, 1.7) * sr.h, y1 = Math.pow(Math.min(1, t1), 1.7) * sr.h;
+          if (y1 - y0 < 0.5) continue;
+          var ww = sr.w * (1 - t0 * 0.45);
+          ctx.drawImage(sr.c, 0, (y0 / sr.h) * sr.c.height, sr.c.width, Math.max(1, ((y1 - y0) / sr.h) * sr.c.height),
+            cxS - ww / 2, horizon + y0, ww, y1 - y0);
+        }
+        ctx.globalAlpha = 1;
+      }
 
       // Randlinien
       for (var sgn = -1; sgn <= 1; sgn += 2) {
@@ -978,7 +1088,7 @@
       // Körper
       ctx.globalAlpha = a;
       ctx.beginPath();
-      if (o.y1 < camY) face(3, 2, 6, 7);
+      if (o.y1 < camYe) face(3, 2, 6, 7);
       if (camX < xl) face(0, 3, 7, 4);
       if (camX > xr) face(1, 2, 6, 5);
       ctx.fillStyle = 'rgba(70,10,60,0.92)';
@@ -1029,7 +1139,7 @@
       // Kanten
       ctx.beginPath();
       face(0, 1, 2, 3);
-      if (o.y1 < camY) { ctx.moveTo(c[3].x, c[3].y); ctx.lineTo(c[7].x, c[7].y); ctx.lineTo(c[6].x, c[6].y); ctx.lineTo(c[2].x, c[2].y); }
+      if (o.y1 < camYe) { ctx.moveTo(c[3].x, c[3].y); ctx.lineTo(c[7].x, c[7].y); ctx.lineTo(c[6].x, c[6].y); ctx.lineTo(c[2].x, c[2].y); }
       if (camX < xl) { ctx.moveTo(c[0].x, c[0].y); ctx.lineTo(c[4].x, c[4].y); ctx.lineTo(c[7].x, c[7].y); }
       if (camX > xr) { ctx.moveTo(c[1].x, c[1].y); ctx.lineTo(c[5].x, c[5].y); ctx.lineTo(c[6].x, c[6].y); }
       glowStroke('255,63,180', lw, a);
@@ -1078,99 +1188,444 @@
       ctx.globalCompositeOperation = 'source-over';
     }
 
-    var SHIP = [
-      [0, 0.30, 1.35],   // 0 Spitze
-      [-0.8, 0.22, -0.55], // 1 hinten links
-      [0.8, 0.22, -0.55],  // 2 hinten rechts
-      [0, 0.78, -0.3],   // 3 Finne oben
-      [0, 0.04, -0.35]   // 4 unten
+    // ── Neon-Lurch: ein Feuersalamander aus Licht, von hinten gesehen ──
+    var LS = 1.2;   // Größe der Figur
+    var NSP = 16;   // Punkte der Wirbelsäule (Schnauze → Schwanzspitze)
+    // Halbe Breite und Rückenhöhe entlang der Wirbelsäule (s = 0 Schnauze … 1 Schwanzspitze)
+    var WID = [[0, 0.2], [0.07, 0.38], [0.17, 0.27], [0.32, 0.39], [0.46, 0.41], [0.57, 0.33], [0.67, 0.19], [0.85, 0.09], [1, 0.02]];
+    var TOP = [[0, 0.28], [0.07, 0.44], [0.17, 0.38], [0.34, 0.48], [0.55, 0.44], [0.67, 0.3], [1, 0.1]];
+    // Leuchtflecken: Position entlang der Wirbelsäule, seitlicher Versatz (Anteil der Breite)
+    var SPOTS = [[0.12, 0.55], [0.12, -0.55], [0.3, 0.5], [0.34, -0.45], [0.42, 0.05], [0.5, 0.5],
+      [0.52, -0.5], [0.64, 0], [0.76, 0.1], [0.87, -0.05]];
+    // Diagonaler Gang: vorne links + hinten rechts gemeinsam
+    var LEGS = [
+      { s: 0.24, side: -1, ph: 0 }, { s: 0.24, side: 1, ph: Math.PI },
+      { s: 0.56, side: -1, ph: Math.PI }, { s: 0.56, side: 1, ph: 0 }
     ];
-    var SP = [];
-    for (var pi = 0; pi < 5; pi++) SP.push({ x: 0, y: 0, s: 0 });
+    var spine = [];
+    for (var ni = 0; ni < NSP; ni++) {
+      spine.push({ x: 0, y: 0, z: 1 - ni * 0.18, w: 0.2, nx: 1, nz: 0,
+        L: { x: 0, y: 0, s: 0 }, R: { x: 0, y: 0, s: 0 }, C: { x: 0, y: 0, s: 0 } });
+    }
+    var T1 = { x: 0, y: 0, s: 0 }, T2 = { x: 0, y: 0, s: 0 }, T3 = { x: 0, y: 0, s: 0 };
+    var body = { baseY: 0.12, cy: 1, sy: 0 };
 
-    function drawPlayer() {
-      var hScale = duckT > 0 ? 0.45 : 1;
-      var hover = 0.22 + (py === 0 ? Math.sin(time * 6) * 0.04 : 0);
-      var blink = invT > 0 && Math.floor(invT * 12) % 2 === 0;
-      if (state === 'over' && stateT > 0.05) return; // zerstört
-      var fz = playerZ;
-      var alpha = blink ? 0.35 : 1;
-      if (state === 'won') alpha = clamp(1 - stateT * 0.8, 0, 1);
-      if (alpha <= 0) return;
-
-      // Schatten / Bodenglühen
-      proj(px, 0, fz + 0.2, P);
-      var sh = 1.3 * P.s * clamp(1 - py * 0.35, 0.3, 1);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.55 * alpha;
-      ctx.drawImage(spr.cyan, P.x - sh, P.y - sh * 0.25, sh * 2, sh * 0.5);
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
-
-      var cb = Math.cos(bank), sb = Math.sin(bank);
-      for (var i = 0; i < 5; i++) {
-        var lx = SHIP[i][0], ly = SHIP[i][1] * hScale;
-        proj(px + lx * cb - ly * sb, py + hover + lx * sb + ly * cb, fz + SHIP[i][2], SP[i]);
+    function interp(tab, s) {
+      for (var i = 1; i < tab.length; i++) {
+        if (s <= tab[i][0]) {
+          var a = tab[i - 1], b = tab[i];
+          return a[1] + (b[1] - a[1]) * (s - a[0]) / (b[0] - a[0]);
+        }
       }
-      function tri(a, b, c) {
-        ctx.moveTo(SP[a].x, SP[a].y); ctx.lineTo(SP[b].x, SP[b].y); ctx.lineTo(SP[c].x, SP[c].y); ctx.closePath();
-      }
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#061520';
-      ctx.beginPath(); tri(0, 1, 3); tri(0, 2, 3); ctx.fill();
-      ctx.fillStyle = 'rgba(64,220,255,0.28)';
-      ctx.beginPath(); tri(0, 1, 3); ctx.fill();
-      ctx.fillStyle = 'rgba(64,220,255,0.14)';
-      ctx.beginPath(); tri(0, 2, 3); ctx.fill();
-      ctx.fillStyle = '#0a2230';
-      ctx.beginPath(); tri(1, 2, 3); ctx.fill();
+      return tab[tab.length - 1][1];
+    }
 
-      var lw = clamp(SP[1].s * 0.03, 1, 3.4);
-      ctx.globalCompositeOperation = 'lighter';
+    // Lokale Lurch-Koordinaten (x rechts, y hoch, z vorwärts) → Bildschirm
+    function lp(lx, ly, lz, out) {
+      lx *= LS; lz *= LS;
+      return proj(px + lx * body.cy + lz * body.sy, body.baseY + ly * LS, playerZ + lz * body.cy - lx * body.sy, out);
+    }
+
+    function updateLurch(dt, lat) {
+      var grounded = py <= 0.02 && vy <= 0;
+      var moving = state !== 'over' && state !== 'paused';
+      // Schrittfrequenz wächst mit dem Tempo; in der Luft und beim Rutschen kein Laufen
+      var hz = moving && grounded && lu.flat < 0.5 ? 1.6 + speed * 0.19 : 0;
+      lu.gait += dt * hz * Math.PI * 2;
+      lu.wave += dt * (hz > 0 ? hz : (lu.flat > 0.5 && moving ? 3.2 : 1.2)) * Math.PI * 2;
+      lu.flat += ((duckT > 0 || state === 'over' ? 1 : 0) - lu.flat) * Math.min(1, dt * 16);
+      lu.sq += (0 - lu.sq) * Math.min(1, dt * 8);
+      lu.look += (clamp(lat * 0.6, -1, 1) - lu.look) * Math.min(1, dt * 12);
+      lu.yaw += (clamp(lat * 0.28, -0.45, 0.45) - lu.yaw) * Math.min(1, dt * 10);
+      lu.tail += (clamp(-lat * 0.45, -0.7, 0.7) - lu.tail) * Math.min(1, dt * 5); // Schwanz schwingt nach
+      var lb = 0;
+      if (state === 'intro') lb = (time % 5) > 3.4 ? 1 : 0;
+      else if (state === 'countdown') lb = countStep < 2 ? 1 : 0;
+      else if (state === 'won') lb = stateT < 1.0 ? 1 : 0;
+      else if (state === 'over') lb = 1;
+      lu.lookBack += (lb - lu.lookBack) * Math.min(1, dt * 7);
+      lu.nextBlink -= dt;
+      if (lu.nextBlink <= 0) { lu.blink = 0.14; lu.nextBlink = rnd(1.8, 4.5); }
+      lu.blink = Math.max(0, lu.blink - dt);
+      lu.gulp = Math.max(0, lu.gulp - dt);
+      lu.dizzy = Math.max(0, lu.dizzy - dt);
+      if (lu.tongue) {
+        lu.tongue.t += dt; // 0,07 s raus, 0,13 s zurück
+        lu.tongue.z -= speed * dt;
+        if (lu.tongue.t > 0.2) lu.tongue = null;
+      }
+
+      // Fußspuren beim Aufsetzen der Füße
+      footprints = footprints.filter(function (f) { f.t += dt; return f.t < 1.1; });
+      for (var k = 0; k < 4; k++) {
+        var l = Math.sin(lu.gait + LEGS[k].ph);
+        if (hz > 0 && lu.lift[k] > 0 && l <= 0) addFootprint(k);
+        lu.lift[k] = l;
+      }
+
+      // Bauchrutscher: Funken unter dem Bauch
+      if (grounded && duckT > 0 && (state === 'run' || state === 'countdown')) {
+        for (var n = 0; n < (reduceMotion ? 1 : 3); n++) {
+          particles.push({
+            x: px + rnd(-0.4, 0.4), y: 0.04, z: playerZ + rnd(-0.7, 0.5),
+            vx: rnd(-2.8, 2.8), vy: rnd(0.8, 3), vz: rnd(-1, 2),
+            life: rnd(0.18, 0.4), max: 0.4, sp: Math.random() < 0.55 ? spr.yellow : spr.white, size: rnd(0.05, 0.11)
+          });
+        }
+      }
+
+      // Sieg: Freudensprünge
+      if (state === 'won' && grounded && stateT > 0.1) {
+        vy = JUMP_V * 0.72;
+        lu.sq = -0.7;
+      }
+    }
+
+    function addFootprint(k) {
+      var L = LEGS[k], p = spine[Math.round(L.s * (NSP - 1))];
+      var fx = p.x + L.side * (p.w * 0.85 + 0.42), fz = p.z + 0.3;
+      footprints.push({
+        x: px + (fx * body.cy + fz * body.sy) * LS,
+        z: dist + playerZ + (fz * body.cy - fx * body.sy) * LS,
+        side: L.side, t: 0
+      });
+    }
+
+    function buildSpine() {
+      var flat = lu.flat, air = py > 0.02;
+      var ys = (1 - 0.3 * lu.sq) * (1 - 0.5 * flat);
+      var ws = (1 + 0.2 * lu.sq) * (1 + 0.15 * flat);
+      var bob = (air || flat > 0.5) ? 0 : Math.abs(Math.sin(lu.gait)) * 0.05;
+      body.baseY = py + (0.1 + bob) * (1 - flat) + 0.02;
+      body.cy = Math.cos(lu.yaw);
+      body.sy = Math.sin(lu.yaw);
+      var curl = air ? (vy > 0 ? 0.55 : 0.3) : 0; // Schwanz rollt sich im Sprung hoch
+      var i, p;
+      for (i = 0; i < NSP; i++) {
+        var s = i / (NSP - 1);
+        p = spine[i];
+        var amp = air ? 0.03 : (0.05 + 0.2 * s * s) * (flat > 0.5 ? 1.3 : 1);
+        p.z = 1.05 - s * 2.45;
+        p.x = amp * Math.sin(lu.wave - s * 5.2) + lu.tail * s * s * 0.9 + lu.look * 0.14 * Math.max(0, 1 - s * 3);
+        p.y = interp(TOP, s) * ys + curl * s * s * s;
+        p.w = interp(WID, s) * ws * (s < 0.16 ? 1 + lu.gulp * 0.9 : 1); // Backen blähen sich nach dem Schnappen
+      }
+      for (i = 0; i < NSP; i++) {
+        var a = spine[Math.max(0, i - 1)], b = spine[Math.min(NSP - 1, i + 1)];
+        var tx = b.x - a.x, tz = b.z - a.z, len = Math.sqrt(tx * tx + tz * tz) || 1;
+        p = spine[i];
+        p.nx = -tz / len;
+        p.nz = tx / len;
+        var side = p.y * 0.55;
+        lp(p.x - p.nx * p.w, side, p.z - p.nz * p.w, p.L);
+        lp(p.x + p.nx * p.w, side, p.z + p.nz * p.w, p.R);
+        lp(p.x, p.y, p.z, p.C);
+      }
+      p = spine[NSP - 1];
+      lu.tipX = px + (p.x * body.cy + p.z * body.sy) * LS;
+      lu.tipY = body.baseY + p.y * LS;
+      lu.tipZ = playerZ + (p.z * body.cy - p.x * body.sy) * LS;
+    }
+
+    function drawLegs() {
+      var ground = (py - body.baseY) / LS;
+      var up = clamp(vy / JUMP_V, -1, 1);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (var k = 0; k < 4; k++) {
+        var L = LEGS[k], p = spine[Math.round(L.s * (NSP - 1))], side = L.side;
+        var front = L.s < 0.4;
+        var sx = p.x + side * p.w * 0.85, sy = p.y * 0.5, sz = p.z;
+        var fx, fy, fz;
+        if (py > 0.02) {
+          // Froschsprung: hinten gestreckt, vorne nach vorn greifen; beim Fallen Landung vorbereiten
+          if (front) { fx = sx + side * 0.3; fy = sy - 0.25 + up * 0.1; fz = sz + 0.35 - (up < 0 ? 0.15 : 0); }
+          else { fx = sx + side * (up > 0 ? 0.15 : 0.35); fy = sy - (up > 0 ? 0.4 : 0.2); fz = sz - (up > 0 ? 0.55 : 0.1); }
+        } else if (lu.flat > 0.5) {
+          // Bauchplatscher: Beine seitlich weg, paddeln
+          var pad = state === 'over' ? 0 : Math.sin(time * 16 + L.ph) * 0.14;
+          fx = sx + side * 0.55; fy = ground + 0.04; fz = sz + (front ? 0.22 : -0.18) + pad;
+        } else {
+          var ph = lu.gait + L.ph;
+          fx = sx + side * 0.42;
+          fy = ground + Math.max(0, Math.sin(ph)) * 0.2;
+          fz = sz - Math.cos(ph) * 0.3;
+        }
+        var ex = (sx + fx) / 2 + side * 0.18, ey = Math.max(sy, fy) + 0.16, ez = (sz + fz) / 2;
+        lp(sx, sy, sz, T1);
+        lp(ex, ey, ez, T2);
+        lp(fx, fy, fz, T3);
+        var lw = Math.max(2.5, 0.16 * LS * T2.s);
+        ctx.globalAlpha = lu.alpha;
+        ctx.beginPath();
+        ctx.moveTo(T1.x, T1.y); ctx.lineTo(T2.x, T2.y); ctx.lineTo(T3.x, T3.y);
+        ctx.strokeStyle = '#05161d';
+        ctx.lineWidth = lw * 1.3;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'lighter';
+        glowStroke('64,220,255', lw * 0.32, 0.9 * lu.alpha);
+        // Zehen
+        var fX = T3.x, fY = T3.y;
+        ctx.beginPath();
+        var toes = [[0.11, 0.09], [0.14, 0], [0.1, -0.08]];
+        for (var t = 0; t < 3; t++) {
+          lp(fx + side * toes[t][0], fy, fz + toes[t][1], T1);
+          ctx.moveTo(fX, fY);
+          ctx.lineTo(T1.x, T1.y);
+        }
+        glowStroke('64,220,255', lw * 0.2, 0.9 * lu.alpha);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+    }
+
+    function outlinePath() {
       ctx.beginPath();
-      ctx.moveTo(SP[1].x, SP[1].y); ctx.lineTo(SP[0].x, SP[0].y); ctx.lineTo(SP[2].x, SP[2].y);
-      ctx.lineTo(SP[3].x, SP[3].y); ctx.lineTo(SP[1].x, SP[1].y); ctx.lineTo(SP[2].x, SP[2].y);
-      ctx.moveTo(SP[0].x, SP[0].y); ctx.lineTo(SP[3].x, SP[3].y);
-      glowStroke('64,220,255', lw, alpha);
+      ctx.moveTo(spine[0].L.x, spine[0].L.y);
+      for (var i = 1; i < NSP; i++) ctx.lineTo(spine[i].L.x, spine[i].L.y);
+      for (i = NSP - 1; i >= 0; i--) ctx.lineTo(spine[i].R.x, spine[i].R.y);
+      ctx.closePath();
+    }
 
-      // Triebwerk
-      var ex = (SP[1].x + SP[2].x) / 2, ey = (SP[1].y + SP[2].y + SP[3].y * 2) / 4;
-      var es = SP[1].s * (0.55 + Math.sin(time * 30) * 0.06 + (state === 'won' ? 0.5 : 0));
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(spr.white, ex - es, ey - es, es * 2, es * 2);
-      ctx.drawImage(spr.cyan, ex - es * 2, ey - es * 1.2, es * 4, es * 2.4);
+    function drawBody() {
+      var a = lu.alpha, i;
+      ctx.globalAlpha = a;
+      outlinePath();
+      ctx.fillStyle = '#041a22';
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'lighter';
+      // Rückenlicht: weicher Streifen entlang der Wirbelsäule (gibt Volumen)
+      ctx.lineCap = 'round';
+      for (i = 1; i < NSP; i++) {
+        var p0 = spine[i - 1].C, p1 = spine[i].C;
+        ctx.strokeStyle = 'rgba(64,220,255,' + (0.17 * a) + ')';
+        ctx.lineWidth = Math.max(1, spine[i].w * LS * p1.s * 1.1);
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+      }
+      outlinePath();
+      glowStroke('64,220,255', clamp(spine[8].C.s * 0.03, 1, 3.2), a);
+      // Leuchtflecken wie beim Feuersalamander
+      for (var k = 0; k < SPOTS.length; k++) {
+        var sp = SPOTS[k], q = spine[Math.round(sp[0] * (NSP - 1))];
+        lp(q.x + q.nx * q.w * sp[1], q.y * 0.97, q.z + q.nz * q.w * sp[1], T1);
+        var r = 0.075 * LS * T1.s * (1 - sp[0] * 0.35) * (0.9 + 0.1 * Math.sin(time * 5 + k));
+        ctx.globalAlpha = 0.9 * a;
+        ctx.drawImage(spr.yellow, T1.x - r * 2.6, T1.y - r * 2.6, r * 5.2, r * 5.2);
+        ctx.fillStyle = 'rgba(255,228,140,' + a + ')';
+        ctx.beginPath();
+        ctx.arc(T1.x, T1.y, r * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = a;
+      var tip = spine[NSP - 1].C, tr = 0.22 * LS * tip.s;
+      ctx.drawImage(spr.cyan, tip.x - tr, tip.y - tr, tr * 2, tr * 2);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }
 
-    // Leuchtwand hinter der Spielfigur (verläuft Richtung Kamera)
-    function drawTrail() {
-      if (trail.length < 2 || (state === 'over' && stateT > 0.05)) return;
-      ctx.globalCompositeOperation = 'lighter';
-      var n = trail.length;
-      var prevB = null, prevT = null;
-      for (var i = 0; i < n; i++) {
-        var t = trail[i];
-        var z = t.d - dist + playerZ - 0.55;
-        if (z + CAM_D < NEAR) break;
-        var hb = t.y + 0.2, ht = t.y + (t.duck ? 0.35 : 0.62);
-        var B = proj(t.x, hb, z, { x: 0, y: 0, s: 0 });
-        var T = proj(t.x, ht, z, { x: 0, y: 0, s: 0 });
-        if (prevB) {
-          var a = 0.5 * (1 - i / n);
-          ctx.fillStyle = 'rgba(64,220,255,' + (a * 0.45) + ')';
+    function drawFace() {
+      var a = lu.alpha, h = spine[1];
+      var ey = h.y + 0.2 * (1 - 0.5 * lu.flat);
+      var squint = lu.flat > 0.5 && state !== 'over';
+      var dizzy = lu.dizzy > 0 || state === 'over';
+      for (var e = -1; e <= 1; e += 2) {
+        lp(h.x + h.nx * 0.25 * e, ey, h.z + h.nz * 0.25 * e + 0.02, T1);
+        var r = 0.19 * LS * T1.s;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.5 * a;
+        ctx.drawImage(spr.white, T1.x - r * 2.4, T1.y - r * 2.4, r * 4.8, r * 4.8);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = a;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        if (squint) {
+          // Zugekniffen: > <
+          var dir = -e;
+          ctx.strokeStyle = '#eafcff';
+          ctx.lineWidth = Math.max(1.5, r * 0.32);
           ctx.beginPath();
-          ctx.moveTo(prevB.x, prevB.y); ctx.lineTo(prevT.x, prevT.y); ctx.lineTo(T.x, T.y); ctx.lineTo(B.x, B.y);
-          ctx.closePath();
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(200,245,255,' + a + ')';
-          ctx.lineWidth = Math.max(1, T.s * 0.02);
-          ctx.beginPath();
-          ctx.moveTo(prevT.x, prevT.y); ctx.lineTo(T.x, T.y);
+          ctx.moveTo(T1.x - 0.6 * r * dir, T1.y - 0.55 * r);
+          ctx.lineTo(T1.x + 0.5 * r * dir, T1.y);
+          ctx.lineTo(T1.x - 0.6 * r * dir, T1.y + 0.55 * r);
           ctx.stroke();
+          continue;
         }
-        prevB = B; prevT = T;
+        var open = lu.blink > 0 ? 0.12 : 1;
+        ctx.fillStyle = '#eafcff';
+        ctx.beginPath();
+        ctx.ellipse(T1.x, T1.y, r, r * open, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#40dcff';
+        ctx.lineWidth = Math.max(1, r * 0.16);
+        ctx.stroke();
+        if (open < 0.5) continue;
+        if (dizzy) {
+          // Spiralaugen
+          ctx.strokeStyle = '#04121a';
+          ctx.lineWidth = Math.max(1, r * 0.15);
+          ctx.beginPath();
+          for (var q = 0; q < 24; q++) {
+            var ang = q * 0.55 + time * 9 * e, rr = r * 0.82 * q / 24;
+            var xx = T1.x + Math.cos(ang) * rr, yy = T1.y + Math.sin(ang) * rr;
+            if (q) ctx.lineTo(xx, yy); else ctx.moveTo(xx, yy);
+          }
+          ctx.stroke();
+        } else {
+          // Pupillen: schauen nach vorn (oben am Auge), zur Seite beim Spurwechsel, zur Kamera beim Umschauen
+          var lb = lu.lookBack;
+          var dx = lu.look * 0.45 * r * (1 - lb * 0.5);
+          var dy = -0.5 * r * (1 - lb);
+          var pr = r * (0.42 + 0.12 * lb);
+          ctx.fillStyle = '#04121a';
+          ctx.beginPath();
+          ctx.arc(T1.x + dx, T1.y + dy, pr, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(T1.x + dx - pr * 0.35, T1.y + dy - pr * 0.35, pr * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
+      // Grinsen und Bäckchen beim Umschauen
+      if (lu.lookBack > 0.3 && !dizzy) {
+        lp(h.x, h.y + 0.02, h.z - 0.02, T1);
+        var r2 = 0.2 * LS * T1.s;
+        ctx.globalAlpha = a * lu.lookBack;
+        ctx.strokeStyle = '#eafcff';
+        ctx.lineWidth = Math.max(1.5, r2 * 0.22);
+        ctx.beginPath();
+        ctx.arc(T1.x, T1.y - r2 * 0.4, r2, 0.2 * Math.PI, 0.8 * Math.PI);
+        ctx.stroke();
+        ctx.globalCompositeOperation = 'lighter';
+        for (e = -1; e <= 1; e += 2) {
+          ctx.drawImage(spr.mag, T1.x + e * r2 * 1.5 - r2 * 0.7, T1.y - r2 * 0.1 - r2 * 0.7, r2 * 1.4, r2 * 1.4);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawTongue() {
+      var tg = lu.tongue;
+      if (!tg) return;
+      var ext = tg.t < 0.07 ? tg.t / 0.07 : Math.max(0, 1 - (tg.t - 0.07) / 0.12);
+      var h = spine[0];
+      lp(h.x, h.y * 0.6, h.z + 0.05, T1);
+      proj(tg.x, tg.y, tg.z, T2);
+      var tx = T1.x + (T2.x - T1.x) * ext, ty = T1.y + (T2.y - T1.y) * ext;
+      var lw = Math.max(3, 0.12 * LS * T1.s);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(T1.x, T1.y);
+      ctx.quadraticCurveTo((T1.x + tx) / 2, Math.min(T1.y, ty) - lw * 2, tx, ty);
+      glowStroke('255,95,162', lw, 1);
+      var r = lw * 1.5;
+      ctx.drawImage(spr.mag, tx - r * 2, ty - r * 2, r * 4, r * 4);
+      if (tg.t > 0.07) {
+        var orr = 0.3 * T2.s * ext + 4;
+        ctx.drawImage(spr.cyan, tx - orr, ty - orr, orr * 2, orr * 2);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // Schwindel-Sternchen um den Kopf nach einem Crash
+    function drawStars() {
+      var amt = state === 'over' ? 1 : clamp(lu.dizzy / 0.4, 0, 1);
+      if (amt <= 0) return;
+      var h = spine[1];
+      ctx.globalCompositeOperation = 'lighter';
+      for (var k = 0; k < 3; k++) {
+        var ang = time * 5 + k * 2.094;
+        lp(h.x + Math.cos(ang) * 0.45, h.y + 0.6, h.z + Math.sin(ang) * 0.32, T1);
+        var r = 0.1 * LS * T1.s;
+        ctx.globalAlpha = amt;
+        ctx.drawImage(spr.yellow, T1.x - r * 2.5, T1.y - r * 2.5, r * 5, r * 5);
+        ctx.fillStyle = '#fff3c4';
+        ctx.beginPath();
+        for (var q = 0; q < 8; q++) {
+          var rr = q % 2 ? r * 0.38 : r, aa = q * Math.PI / 4 + time * 4;
+          var xx = T1.x + Math.cos(aa) * rr, yy = T1.y + Math.sin(aa) * rr;
+          if (q) ctx.lineTo(xx, yy); else ctx.moveTo(xx, yy);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function drawPlayer() {
+      lu.alpha = invT > 0 && state === 'run' && Math.floor(invT * 12) % 2 === 0 ? 0.4 : 1;
+      if (state === 'won') lu.alpha = clamp(1 - (playerZ - 25) / 35, 0, 1);
+      if (lu.alpha <= 0) return;
+      buildSpine();
+
+      // Bodenglühen (nicht im Spiegelbild)
+      var mid = spine[6];
+      if (!mirror) {
+      lp(mid.x, -body.baseY / LS, mid.z, T1);
+      var sh = 1.5 * T1.s * clamp(1 - py * 0.35, 0.3, 1);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.5 * lu.alpha;
+      ctx.drawImage(spr.cyan, T1.x - sh, T1.y - sh * 0.3, sh * 2, sh * 0.6);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      }
+
+      drawLegs();
+      drawBody();
+      drawFace();
+      drawTongue();
+      drawStars();
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+    }
+
+    function drawFootprints() {
+      ctx.globalCompositeOperation = 'lighter';
+      for (var i = 0; i < footprints.length; i++) {
+        var f = footprints[i], rz = f.z - dist;
+        if (rz + CAM_D < NEAR) continue;
+        proj(f.x, 0.01, rz, T1);
+        var r = 0.08 * LS * T1.s;
+        ctx.globalAlpha = (1 - f.t / 1.1) * 0.75;
+        ctx.drawImage(spr.cyan, T1.x - r * 2, T1.y - r * 0.9, r * 4, r * 1.8);
+        for (var t = -1; t <= 1; t++) {
+          proj(f.x + (0.08 * t + f.side * 0.05) * LS, 0.01, rz + (0.14 - Math.abs(t) * 0.03) * LS, T2);
+          var tr = r * 0.9;
+          ctx.drawImage(spr.cyan, T2.x - tr, T2.y - tr * 0.6, tr * 2, tr * 1.2);
+        }
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // Lichtschweif der Schwanzspitze
+    function drawTrail() {
+      if (trail.length < 2) return;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      var n = trail.length;
+      for (var i = 1; i < n; i++) {
+        var a0 = trail[i - 1], a1 = trail[i];
+        var z0 = a0.d - dist + a0.z, z1 = a1.d - dist + a1.z;
+        if (z1 + CAM_D < NEAR) break;
+        proj(a0.x, a0.y, z0, T1);
+        proj(a1.x, a1.y, z1, T2);
+        var f = 1 - i / n;
+        ctx.strokeStyle = 'rgba(64,220,255,' + (0.55 * f * lu.alpha) + ')';
+        ctx.lineWidth = Math.max(1, 0.09 * T2.s * f);
+        ctx.beginPath();
+        ctx.moveTo(T1.x, T1.y);
+        ctx.lineTo(T2.x, T2.y);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
       ctx.globalCompositeOperation = 'source-over';
     }
 
@@ -1198,7 +1653,89 @@
       ctx.globalCompositeOperation = 'source-over';
     }
 
+    function drawArch(a, rz) {
+      if (rz + CAM_D < NEAR + 0.2) return;
+      // Ringe kurz vor der Kamera ausblenden (sonst breite Balken quer übers Bild)
+      var f = fog(rz) * clamp((rz + 2.5) / 4, 0, 1);
+      if (f <= 0) return;
+      var i, th;
+      ctx.beginPath();
+      for (i = 0; i <= 8; i++) {
+        th = i * Math.PI / 8;
+        proj(Math.cos(th) * TUN_R, Math.sin(th) * TUN_R * 0.95, rz, P);
+        if (i) ctx.lineTo(P.x, P.y); else ctx.moveTo(P.x, P.y);
+      }
+      var col = a.k % 2 ? '255,63,180' : '64,220,255';
+      var pulse = 0.55 + 0.45 * Math.sin(time * 7 - a.k * 0.8);
+      var lw = clamp(P.s * 0.04, 0.8, 3.2) * (a.gate ? 1.6 : 1);
+      ctx.globalCompositeOperation = 'lighter';
+      glowStroke(col, lw, f * (a.gate ? 1 : pulse));
+      // Lichtpunkte an den Ecken
+      var sp = a.k % 2 ? spr.mag : spr.cyan;
+      ctx.globalAlpha = 0.8 * f;
+      for (i = 1; i < 8; i += 2) {
+        th = i * Math.PI / 8;
+        proj(Math.cos(th) * TUN_R, Math.sin(th) * TUN_R * 0.95, rz, P);
+        var r = clamp(P.s * 0.3, 3, 26);
+        ctx.drawImage(sp, P.x - r, P.y - r, r * 2, r * 2);
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // Längslinien der Tunnelröhre
+    function drawTunnelWalls() {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineWidth = 1.2;
+      for (var t = 0; t < tunnels.length; t++) {
+        var z0 = Math.max(-4.3, tunnels[t].start - dist), z1 = Math.min(FAR, tunnels[t].end - dist);
+        if (z1 <= z0) continue;
+        ctx.strokeStyle = 'rgba(64,220,255,' + (0.22 * fog(z0)) + ')';
+        ctx.beginPath();
+        for (var i = 1; i < 8; i++) {
+          var th = i * Math.PI / 8, x = Math.cos(th) * TUN_R, y = Math.sin(th) * TUN_R * 0.95;
+          proj(x, y, z0, P); ctx.moveTo(P.x, P.y);
+          proj(x, y, z1, P); ctx.lineTo(P.x, P.y);
+        }
+        ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function drawItem(it) {
+      if (it.arch) drawArch(it.arch, it.z);
+      else if (!it.o) { if (!mirror) { drawPlayer(); drawTrail(); } } // flacher Lurch: Spiegelbild wirkt wie Doppelgänger
+      else if (it.o.type === 'orb') drawOrb(it.o, it.z);
+      else drawBox(it.o, it.z);
+    }
+
+    // Spiegelbild aller Objekte in halber Auflösung, additiv auf die Straße gelegt
+    function drawReflections(list) {
+      if (!rctx) return;
+      var rs = dpr * REFL_SCALE;
+      rctx.setTransform(1, 0, 0, 1, 0, 0);
+      rctx.globalCompositeOperation = 'source-over';
+      rctx.globalAlpha = 1;
+      rctx.clearRect(0, 0, refl.width, refl.height);
+      rctx.setTransform(rs, 0, 0, rs, 0, 0);
+      ctx = rctx;
+      mirror = true;
+      try {
+        for (var j = 0; j < list.length; j++) drawItem(list[j]);
+      } finally {
+        mirror = false;
+        ctx = mainCtx;
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.38;
+      ctx.drawImage(refl, 0, 0, W, H);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
     function render() {
+      Fe = F * fov;
+      camYe = camY * F / Fe;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
@@ -1220,7 +1757,13 @@
 
       drawGrid();
       drawStreaks();
+      if (tunIn > 0.01) {
+        ctx.fillStyle = 'rgba(3,4,10,' + (0.8 * tunIn) + ')';
+        ctx.fillRect(-140, -140, W + 280, H + 280);
+      }
       drawRoad();
+      drawFootprints();
+      drawTunnelWalls();
 
       // Objekte von hinten nach vorn, Spielfigur dazwischen einsortiert
       var list = [];
@@ -1228,14 +1771,17 @@
         var rz = objects[i].z - dist;
         if (rz < FAR + 2 && rz + CAM_D > NEAR) list.push({ o: objects[i], z: rz });
       }
+      for (var t = 0; t < tunnels.length; t++) {
+        var tn = tunnels[t], nR = Math.round((tn.end - tn.start) / TUN_STEP);
+        for (var k = 0; k <= nR; k++) {
+          var az = tn.start + k * TUN_STEP - dist;
+          if (az < FAR && az + CAM_D > NEAR) list.push({ arch: { k: k, gate: k === 0 || k === nR }, z: az });
+        }
+      }
       list.push({ o: null, z: playerZ + 0.2 });
       list.sort(function (a, b) { return b.z - a.z; });
-      for (var j = 0; j < list.length; j++) {
-        var it = list[j];
-        if (!it.o) { drawPlayer(); drawTrail(); }
-        else if (it.o.type === 'orb') drawOrb(it.o, it.z);
-        else drawBox(it.o, it.z);
-      }
+      drawReflections(list);
+      for (var j = 0; j < list.length; j++) drawItem(list[j]);
       drawParticles();
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1355,6 +1901,7 @@
       _snapshot: function () {
         return {
           state: state, lane: lane, px: px, py: py, duck: duckT > 0, lives: lives, orbs: orbs, speed: speed,
+          tongue: lu.tongue ? lu.tongue.t : -1, tunnel: tunIn,
           objects: objects.map(function (o) {
             return { type: o.type, lane: Math.round(o.x / LANE), z: o.z - dist, y: o.y };
           })
@@ -1374,7 +1921,8 @@
         window.removeEventListener('keydown', onKey);
         document.removeEventListener('visibilitychange', onVisibility);
         if (root.parentNode) root.parentNode.removeChild(root);
-        objects = []; particles = []; trail = []; rings = [];
+        objects = []; particles = []; trail = []; rings = []; tunnels = [];
+        if (refl) refl.width = refl.height = 0;
         canvas.width = canvas.height = 0;
         removeStyle();
       }
