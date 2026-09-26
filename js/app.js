@@ -52,13 +52,22 @@ function openDb() {
 }
 
 async function savePhoto(key, blob) {
+  // Als ArrayBuffer ablegen: Blobs in IndexedDB scheitern in manchen
+  // Safari-/WebView-Versionen, Rohdaten funktionieren überall
+  const record = { type: blob.type || 'image/jpeg', data: await blob.arrayBuffer() };
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction('photos', 'readwrite');
-    tx.objectStore('photos').put(blob, key);
+    tx.objectStore('photos').put(record, key);
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('Speichern abgebrochen'));
   });
+}
+
+function recordToBlob(value) {
+  if (value instanceof Blob) return value; // ältere Einträge
+  return new Blob([value.data], { type: value.type });
 }
 
 async function getPhotos(prefix) {
@@ -70,7 +79,7 @@ async function getPhotos(prefix) {
       const cursor = req.result;
       if (cursor) {
         if (String(cursor.key).startsWith(prefix)) {
-          out.push({ key: String(cursor.key), blob: cursor.value });
+          out.push({ key: String(cursor.key), blob: recordToBlob(cursor.value) });
         }
         cursor.continue();
       } else {
@@ -421,9 +430,11 @@ function handlePosition(lat, lng, accuracy) {
   $('distance-display').textContent =
     dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
   $('gps-status').textContent =
-    dist <= radius * 2
-      ? 'Gleich geschafft – halte die Augen offen!'
-      : `GPS aktiv (±${Math.round(accuracy)} m)`;
+    state.testMode
+      ? 'Testmodus: simulierte Position, echtes GPS pausiert'
+      : dist <= radius * 2
+        ? 'Gleich geschafft – halte die Augen offen!'
+        : `GPS aktiv (±${Math.round(accuracy)} m)`;
 
   // Puls-Ring wird schneller, je näher das Ziel kommt; bei Zielnähe grüner Glow
   const card = document.querySelector('.compass-card');
@@ -543,13 +554,20 @@ function mountPhotoSection(slotId, station) {
 async function handlePhotoInput() {
   const file = $('photo-input').files[0];
   if (!file) return;
-  const small = await shrinkImage(file);
+  const task = $('photo-task');
+  task.textContent = 'Foto wird gespeichert …';
   const key = `${state.cityId}:${String(state.stationIndex).padStart(2, '0')}`;
-  await savePhoto(key, small);
-  const img = $('photo-preview');
-  img.src = URL.createObjectURL(small);
-  img.classList.remove('hidden');
-  $('photo-task').textContent = 'Gespeichert – ein Andenken mehr!';
+  try {
+    const small = await shrinkImage(file);
+    const img = $('photo-preview');
+    img.src = URL.createObjectURL(small);
+    img.classList.remove('hidden');
+    await savePhoto(key, small);
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    task.textContent = 'Gespeichert – ein Andenken mehr!';
+  } catch (e) {
+    task.textContent = `Foto konnte nicht gespeichert werden (${e && (e.name || e.message) || 'unbekannter Fehler'}). Bitte nochmal versuchen.`;
+  }
 }
 
 /* ── Station gelöst ── */
