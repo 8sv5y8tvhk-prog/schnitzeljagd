@@ -4,8 +4,8 @@
   "description": "Selbstgebaute Schnitzeljagd durch die Stadt",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#1a1423",
-  "theme_color": "#1a1423",
+  "background_color": "#0a0e14",
+  "theme_color": "#0a0e14",
   "icons": [
     {
       "src": "icons/icon.svg",
@@ -16,6 +16,11 @@
     {
       "src": "icons/icon-180.png",
       "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
       "type": "image/png"
     },
     {

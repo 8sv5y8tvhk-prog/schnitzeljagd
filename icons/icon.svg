@@ -1,11 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="110" fill="#1a1423"/>
-  <circle cx="256" cy="256" r="170" fill="none" stroke="#e0a458" stroke-width="22"/>
-  <circle cx="256" cy="256" r="26" fill="#e0a458"/>
-  <path d="M256 130 L286 226 L256 256 L226 226 Z" fill="#e0a458"/>
-  <path d="M256 382 L276 316 L256 296 L236 316 Z" fill="#8a6a3a"/>
-  <circle cx="256" cy="110" r="10" fill="#e0a458"/>
-  <circle cx="256" cy="402" r="10" fill="#8a6a3a"/>
-  <circle cx="110" cy="256" r="10" fill="#8a6a3a"/>
-  <circle cx="402" cy="256" r="10" fill="#8a6a3a"/>
+  <defs>
+    <radialGradient id="bg" cx="0.85" cy="0" r="0.75">
+      <stop offset="0" stop-color="#0d2230"/>
+      <stop offset="0.55" stop-color="#0a0e14"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#0a0e14"/>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g transform="translate(-33 20)">
+  <path d="M160 388 C 160 320, 256 330, 256 268 C 256 206, 352 212, 352 150"
+        fill="none" stroke="#40dcff" stroke-opacity="0.5" stroke-width="12"
+        stroke-linecap="round" stroke-dasharray="26 22"/>
+  <circle cx="160" cy="388" r="22" fill="#0a0e14" stroke="#40dcff" stroke-width="10"/>
+  <circle cx="256" cy="268" r="22" fill="#0a0e14" stroke="#40dcff" stroke-width="10"/>
+  <circle cx="352" cy="150" r="88" fill="none" stroke="#40dcff" stroke-opacity="0.14" stroke-width="5"/>
+  <circle cx="352" cy="150" r="60" fill="none" stroke="#40dcff" stroke-opacity="0.32" stroke-width="7"/>
+  <circle cx="352" cy="150" r="34" fill="#40dcff"/>
+  </g>
 </svg>
