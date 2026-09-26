@@ -191,6 +191,7 @@ async function init() {
     return;
   }
   renderCityList();
+  $('btn-games').classList.toggle('hidden', availableGames().length === 0);
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -831,7 +832,106 @@ function teleportToTarget() {
   handlePosition(st.lat, st.lng, 5);
 }
 
+/* ── Minispiele ──
+ * Spiele registrieren sich in games/*.js unter window.SchnitzelGames
+ * (Vertrag: games/README.md). openGame() zeigt sie im Vollbild-Rahmen.
+ */
+const game = {
+  instance: null,
+  name: null,
+  params: null,
+  fails: 0,
+  onDone: null,
+};
+
+function availableGames() {
+  return Object.entries(window.SchnitzelGames || {})
+    .filter(([, g]) => g && typeof g.mount === 'function');
+}
+
+function renderGameList() {
+  const list = $('game-list');
+  list.innerHTML = '';
+  availableGames().forEach(([name, g]) => {
+    const btn = document.createElement('button');
+    btn.className = 'city-card';
+    const title = document.createElement('div');
+    title.className = 'city-name';
+    title.textContent = g.title || name;
+    const badge = document.createElement('div');
+    badge.className = 'city-progress';
+    badge.textContent = 'Spielen';
+    btn.append(title, badge);
+    btn.addEventListener('click', () =>
+      openGame(name, {}, { onDone: () => showScreen('screen-games') }));
+    list.appendChild(btn);
+  });
+}
+
+function setGameStatus() {
+  $('game-status').textContent =
+    game.fails === 1 ? '1 Fehlversuch' : `${game.fails} Fehlversuche`;
+}
+
+function openGame(name, params, { onDone } = {}) {
+  unmountGame();
+  const def = (window.SchnitzelGames || {})[name];
+  if (!def) return;
+  game.name = name;
+  game.params = params || {};
+  game.onDone = onDone || null;
+  game.fails = 0;
+  setGameStatus();
+  $('game-result').classList.add('hidden');
+  $('game-overlay').classList.remove('hidden');
+  document.body.classList.add('game-open');
+  try {
+    game.instance = def.mount($('game-host'), {
+      params: game.params,
+      onWin: handleGameWin,
+      onFail: () => { game.fails += 1; setGameStatus(); },
+    });
+  } catch (e) {
+    $('game-status').textContent = 'Spiel konnte nicht gestartet werden';
+    if (window.console) console.error(e);
+  }
+}
+
+function handleGameWin() {
+  confettiBurst(60);
+  $('game-result-text').textContent =
+    game.fails === 0 ? 'Fehlerfrei gelöst' : `Gelöst mit ${game.fails} ${game.fails === 1 ? 'Fehlversuch' : 'Fehlversuchen'}`;
+  $('game-result').classList.remove('hidden');
+}
+
+function unmountGame() {
+  if (game.instance) {
+    try { game.instance.destroy(); } catch (e) { if (window.console) console.error(e); }
+  }
+  game.instance = null;
+}
+
+function closeGame() {
+  unmountGame();
+  $('game-overlay').classList.add('hidden');
+  $('game-result').classList.add('hidden');
+  document.body.classList.remove('game-open');
+  const done = game.onDone;
+  game.onDone = null;
+  if (done) done();
+}
+
 /* ── Events ── */
+$('btn-games').addEventListener('click', () => {
+  renderGameList();
+  showScreen('screen-games');
+});
+$('btn-games-back').addEventListener('click', () => showScreen('screen-start'));
+$('btn-game-close').addEventListener('click', closeGame);
+$('btn-game-done').addEventListener('click', closeGame);
+$('btn-game-again').addEventListener('click', () =>
+  openGame(game.name, game.params, { onDone: game.onDone }));
+
 $('btn-start-hunt').addEventListener('click', () => {
   if (!loadProgress(state.cityId).startedAt) {
     saveProgress(state.cityId, { startedAt: Date.now() });

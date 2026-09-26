@@ -539,6 +539,57 @@ h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
   z-index: 100;
 }
 
+/* ── Minispiele: Vollbild-Rahmen ── */
+body.game-open { overflow: hidden; }
+.game-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(120% 70% at 85% 0%, #0d2230 0%, var(--bg) 55%);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overscroll-behavior: contain;
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.game-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 0;
+}
+.hud-btn svg { pointer-events: none; }
+.game-status {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--text-3);
+}
+.game-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+.game-result {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 18px;
+  border: 1px solid var(--cyan-30);
+  border-radius: var(--radius-card);
+  background: rgba(10, 14, 20, 0.96);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.game-result h2 { color: var(--ok); text-transform: uppercase; letter-spacing: -0.02em; }
+
 /* ── Testmodus ── */
 .testbar {
   position: fixed;

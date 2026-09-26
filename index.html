@@ -23,7 +23,19 @@
       <h1 id="app-title">Schnitzel&shy;jagd</h1>
     </div>
     <div id="city-list" class="city-list"></div>
+    <button id="btn-games" class="btn btn-ghost hidden">Minispiele</button>
     <p class="footnote">Tipp: Füge die Seite deinem Homescreen hinzu,<br>dann fühlt sie sich wie eine App an.</p>
+  </section>
+
+  <!-- Spielemodus: alle Minispiele frei spielbar -->
+  <section id="screen-games" class="screen">
+    <div class="start-hero">
+      <p class="subtitle">Spielemodus · Freies Spiel</p>
+      <h1>Mini&shy;spiele</h1>
+    </div>
+    <div id="game-list" class="city-list"></div>
+    <p class="footnote">Die Spiele laufen hier mit Beispiel-Inhalten. In einer Schnitzeljagd kommen die Inhalte aus der jeweiligen Station.</p>
+    <button id="btn-games-back" class="btn btn-ghost">Zurück</button>
   </section>
 
   <!-- Startcode-Abfrage für verschlüsselte Städte -->
@@ -180,9 +192,27 @@
     <button id="btn-test-off" class="btn-mini">Aus</button>
   </div>
 
+  <!-- Vollbild-Rahmen für Minispiele -->
+  <div id="game-overlay" class="game-overlay hidden" role="dialog" aria-modal="true" aria-label="Minispiel">
+    <div class="game-topbar">
+      <button id="btn-game-close" class="hud-btn" aria-label="Spiel beenden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <span id="game-status" class="game-status"></span>
+    </div>
+    <div id="game-host" class="game-host"></div>
+    <div id="game-result" class="game-result hidden">
+      <p class="subtitle">Geschafft</p>
+      <h2 id="game-result-text"></h2>
+      <button id="btn-game-again" class="btn btn-primary">Nochmal spielen</button>
+      <button id="btn-game-done" class="btn btn-ghost">Zurück zur Auswahl</button>
+    </div>
+  </div>
+
   <canvas id="confetti" class="confetti hidden"></canvas>
 
   <script src="js/crypto.js"></script>
+  <script src="games/memory.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
