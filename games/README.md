@@ -34,14 +34,24 @@ ist immer gewinnbar, es gibt kein Zeitlimit.
 - Schriftgröße und Spaltenzahl passen sich automatisch an Bildschirm und
   Wortlänge an. Wörter werden nur getrennt, wenn sie selbst in der kleinsten
   Schrift (15 px) nicht in eine Zeile passen.
-- Im Hintergrund (App verlassen) pausieren Timer und Animationen.
-- Datei: `games/memory.js` (ca. 20 KB), Testseite: `games/memory.html`.
+- **Pech-Meldung:** Ab dem 2. Fehlversuch in Folge erscheint oben kurz
+  „Uff...mieser Larry" (über dem Kopfbereich, die Karten bleiben sichtbar).
+  Ein gefundenes Paar setzt die Zählung zurück.
+- **Wirbelsturm:** Sind nur noch 2 Paare übrig, erscheint „Achtung, mieser
+  Wind", und alle Karten fliegen 3 Sekunden lang wild durchs Spielfeld und
+  landen auf neuen Plätzen. Jede noch verdeckte Karte bekommt garantiert einen
+  anderen Platz. Währenddessen kann nichts angetippt werden. Passiert pro
+  Spiel nur einmal. Bei „Bewegung reduzieren" (iPhone-Einstellung) werden die
+  Karten stattdessen aus- und an neuer Stelle wieder eingeblendet.
+- Im Hintergrund (App verlassen) pausieren Timer und Animationen, auch der
+  Wirbelsturm.
+- Datei: `games/memory.js` (ca. 27 KB), Testseite: `games/memory.html`.
 
 ### Parameter
 
 | Parameter | Typ | Standard | Bedeutung |
 |---|---|---|---|
-| `pairs` | Liste | `["Kompass", "Karte", "Schatz", "Route", "Rätsel", "Laterne"]` | Die Paare, 2 bis 10 Einträge. Ein Text (`"Uhr"`) ergibt zwei gleiche Karten. Eine Liste mit zwei Texten (`["Uhr", "Zeiger"]`) ergibt zwei zusammengehörige Karten. Beides darf gemischt werden. Doppelte Einträge werden ignoriert. Kurze Begriffe lesen sich am besten: Bei 6 Paaren passen auf dem kleinsten iPhone Wörter bis ca. 9 Buchstaben ungetrennt, bei 8–10 Paaren eher bis 5–6 Buchstaben. |
+| `pairs` | Liste | `["Lurch", "Maus", "Macher", "Masaaas", "Labor", "Wuff"]` | Die Paare, 2 bis 10 Einträge. Ein Text (`"Uhr"`) ergibt zwei gleiche Karten. Eine Liste mit zwei Texten (`["Uhr", "Zeiger"]`) ergibt zwei zusammengehörige Karten. Beides darf gemischt werden. Doppelte Einträge werden ignoriert. Kurze Begriffe lesen sich am besten: Bei 6 Paaren passen auf dem kleinsten iPhone Wörter bis ca. 9 Buchstaben ungetrennt, bei 8–10 Paaren eher bis 5–6 Buchstaben. |
 | `columns` | Zahl | `0` (automatisch) | Spaltenzahl des Rasters, 2 bis 5. Bei `0` wählt das Spiel selbst passend zur Bildschirmgröße (6 Paare → meist 3 Spalten × 4 Reihen). |
 | `title` | Text | `"Memory"` | Überschrift (wird in Großbuchstaben angezeigt). |
 | `label` | Text | `"Minispiel"` | Kleine Zeile über der Überschrift. |
@@ -49,6 +59,11 @@ ist immer gewinnbar, es gibt kein Zeitlimit.
 | `successText` | Text | `"Alle Paare gefunden"` | Erfolgsmeldung nach dem letzten Paar. |
 | `previewMs` | Zahl (ms) | `0` | Wenn größer als 0: Zu Beginn liegen alle Karten so lange offen (max. 10000), danach werden sie umgedreht. Erleichtert das Spiel. |
 | `flipBackMs` | Zahl (ms) | `1200` | Wie lange zwei falsche Karten offen bleiben (400–4000). |
+| `failStreak` | Zahl | `2` | Ab so vielen Fehlversuchen in Folge erscheint die Pech-Meldung. `0` = aus. |
+| `failText` | Text | `"Uff...mieser Larry"` | Text der Pech-Meldung. |
+| `shuffleAt` | Zahl | `2` | Wirbelsturm, sobald nur noch so viele Paare übrig sind. `0` = aus. |
+| `shuffleText` | Text | `"Achtung, mieser Wind"` | Text der Wirbelsturm-Meldung. |
+| `shuffleMs` | Zahl (ms) | `3000` | Dauer des Wirbelsturms (1000–8000). |
 
 Ungültige oder fehlende Werte fallen stillschweigend auf den Standard zurück
 (bei weniger als 2 gültigen Paaren auf die Standard-Paare).
@@ -73,9 +88,21 @@ Ungültige oder fehlende Werte fallen stillschweigend auf den Standard zurück
     "columns": 3,
     "previewMs": 0,
     "flipBackMs": 1200,
+    "failStreak": 2,
+    "failText": "Uff...mieser Larry",
+    "shuffleAt": 2,
+    "shuffleText": "Achtung, mieser Wind",
+    "shuffleMs": 3000,
     "successText": "Alles zusammengesetzt"
   },
   "question": "Die Hofuhrmacherin hat ihre Notizen durcheinandergebracht. Bring Ordnung hinein!",
   "hint": "Merk dir, wo die Karten liegen, die du schon einmal gesehen hast."
 }
 ```
+
+### Hinweis für den Einbau in die App
+
+Der Service Worker der App (`sw.js`) liefert Dateien aus seinem Cache. Neue
+oder geänderte `games/*.js` müssen in die SHELL-Liste von `sw.js`, und die
+Cache-Version muss erhöht werden, sonst sieht das Handy die alte Fassung.
+Beim Testen im Browser vorher Service Worker und Cache löschen.

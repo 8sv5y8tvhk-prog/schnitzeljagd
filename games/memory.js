@@ -10,18 +10,23 @@
   var MAX_PAIRS = 10;
 
   var DEFAULTS = {
-    pairs: ['Kompass', 'Karte', 'Schatz', 'Route', 'Rätsel', 'Laterne'],
+    pairs: ['Lurch', 'Maus', 'Macher', 'Masaaas', 'Labor', 'Wuff'],
     columns: 0,
     title: 'Memory',
     label: 'Minispiel',
     intro: 'Tippe zwei Karten an. Findest du alle Paare, die zusammengehören?',
     successText: 'Alle Paare gefunden',
     previewMs: 0,
-    flipBackMs: 1200
+    flipBackMs: 1200,
+    failStreak: 2,
+    failText: 'Uff...mieser Larry',
+    shuffleAt: 2,
+    shuffleText: 'Achtung, mieser Wind',
+    shuffleMs: 3000
   };
 
   var CSS = [
-    '.sg-memory{width:100%;height:100%;display:flex;flex-direction:column;gap:14px;padding:16px 16px 18px;box-sizing:border-box;',
+    '.sg-memory{position:relative;width:100%;height:100%;display:flex;flex-direction:column;gap:14px;padding:16px 16px 18px;box-sizing:border-box;',
     'font-family:"Space Grotesk",-apple-system,sans-serif;color:var(--text,#eaf6fb);background:var(--bg,#0a0e14);overflow:hidden;',
     '-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}',
     '.sg-memory *{box-sizing:border-box;margin:0;padding:0}',
@@ -38,7 +43,16 @@
     '.sg-memory__msg svg{width:20px;height:20px;flex:0 0 auto}',
     '.sg-memory.is-won .sg-memory__msg{display:flex}',
     '.sg-memory.is-won .sg-memory__count,.sg-memory.is-won .sg-memory__bar{display:none}',
-    '.sg-memory__board{flex:1 1 auto;min-height:0;display:grid;gap:10px;touch-action:manipulation}',
+    '.sg-memory__board{position:relative;flex:1 1 auto;min-height:0;display:grid;gap:10px;touch-action:manipulation}',
+    '.sg-memory__toast{position:absolute;left:16px;right:16px;top:16px;z-index:50;display:flex;align-items:center;justify-content:center;gap:12px;',
+    'min-height:64px;padding:14px 18px;border-radius:18px;background:var(--bg,#0a0e14);border:2px solid var(--cyan,#40dcff);color:var(--cyan,#40dcff);',
+    'box-shadow:0 18px 44px rgba(0,0,0,.6);font-size:21px;font-weight:700;letter-spacing:-.02em;text-transform:uppercase;text-align:center;line-height:1.15;',
+    'pointer-events:none;opacity:0;visibility:hidden;transform:scale(.85);transition:opacity .2s ease,transform .2s ease,visibility 0s linear .2s}',
+    '.sg-memory__toast.is-show{opacity:1;visibility:visible;transform:scale(1);transition:opacity .2s ease,transform .3s cubic-bezier(.2,1.5,.4,1)}',
+    '.sg-memory__toast.is-fail{border-color:var(--err,#fb7185);color:var(--err,#fb7185)}',
+    '.sg-memory__toast.is-wind{top:50%;margin-top:-40px;min-height:80px;font-size:23px}',
+    '.sg-memory__toast svg{width:30px;height:30px;flex:0 0 auto;display:none}',
+    '.sg-memory__toast.is-wind svg{display:block}',
     '.sg-memory__card{position:relative;min-width:44px;min-height:44px;cursor:pointer;outline:none;-webkit-perspective:700px;perspective:700px;touch-action:manipulation}',
     '.sg-memory__inner{position:absolute;inset:0;-webkit-transform-style:preserve-3d;transform-style:preserve-3d;transition:transform .38s cubic-bezier(.2,.7,.2,1)}',
     '.sg-memory__card.is-open .sg-memory__inner{transform:rotateY(180deg)}',
@@ -62,7 +76,7 @@
     '@keyframes sg-memory-glow{0%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(74,222,128,0))}',
     '40%{transform:scale(1.06);filter:drop-shadow(0 0 14px rgba(74,222,128,.7))}100%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(74,222,128,0))}}',
     '@media (prefers-reduced-motion: reduce){',
-    '.sg-memory__inner,.sg-memory__front,.sg-memory__seg{transition:none}',
+    '.sg-memory__inner,.sg-memory__front,.sg-memory__seg,.sg-memory__toast,.sg-memory__toast.is-show{transition:none}',
     '.sg-memory__card.is-wrong,.sg-memory.is-won .sg-memory__card{animation:none}}'
   ].join('\n');
 
@@ -119,6 +133,14 @@
       ['circle', { cx: '6', cy: '19', r: '2' }],
       ['path', { d: 'M8 18c5-1 1-7 6-8s4-3 3-5', 'stroke-dasharray': '2.5 3' }],
       ['circle', { cx: '18', cy: '5', r: '2.5' }]
+    ]);
+  }
+
+  function windIcon() {
+    return svg([
+      ['path', { d: 'M3 8h10a3 3 0 1 0-3-3' }],
+      ['path', { d: 'M3 12h15a3 3 0 1 1-3 3' }],
+      ['path', { d: 'M3 16h7' }]
     ]);
   }
 
@@ -201,7 +223,12 @@
       successText: str(params.successText, DEFAULTS.successText),
       columns: num(params.columns, 0, 0, 5),
       previewMs: num(params.previewMs, DEFAULTS.previewMs, 0, 10000),
-      flipBackMs: num(params.flipBackMs, DEFAULTS.flipBackMs, 400, 4000)
+      flipBackMs: num(params.flipBackMs, DEFAULTS.flipBackMs, 400, 4000),
+      failStreak: num(params.failStreak, DEFAULTS.failStreak, 0, 20),
+      failText: str(params.failText, DEFAULTS.failText),
+      shuffleAt: num(params.shuffleAt, DEFAULTS.shuffleAt, 0, MAX_PAIRS),
+      shuffleText: str(params.shuffleText, DEFAULTS.shuffleText),
+      shuffleMs: num(params.shuffleMs, DEFAULTS.shuffleMs, 1000, 8000)
     };
     var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -282,6 +309,13 @@
       c.matched = false;
     });
 
+    var toast = el('div', 'sg-memory__toast');
+    toast.setAttribute('role', 'status');
+    toast.appendChild(windIcon());
+    var toastText = el('span');
+    toast.appendChild(toastText);
+    root.appendChild(toast);
+
     container.appendChild(root);
 
     // ── Zustand ──
@@ -298,6 +332,11 @@
     var resizeObs = null;
     var timers = [];
     var paused = false;
+    var failRun = 0;
+    var shuffling = false;
+    var shuffled = false;
+    var anims = [];
+    var toastTimer = null;
 
     // Pausierbare Timer (bei App im Hintergrund angehalten)
     function schedule(fn, ms) {
@@ -327,10 +366,12 @@
           clearTimeout(t.id);
           t.remaining = Math.max(0, t.remaining - (Date.now() - t.start));
         });
+        anims.forEach(function (a) { a.pause(); });
       } else if (!document.hidden && paused) {
         paused = false;
         root.classList.remove('is-paused');
         timers.slice().forEach(run);
+        anims.forEach(function (a) { a.play(); });
       }
     }
 
@@ -404,7 +445,7 @@
     }
 
     function activate(c) {
-      if (destroyed || won || previewing || !c || c.matched) return;
+      if (destroyed || won || previewing || shuffling || !c || c.matched) return;
       if (openCards.length === 2) closeMismatch(); // nicht warten müssen
       if (c.open) return;
       setOpen(c, true);
@@ -420,18 +461,119 @@
         b.node.classList.add('is-matched');
         openCards = [];
         found++;
+        failRun = 0;
         updateStatus();
         if (found === pairs.length) win();
+        else if (cfg.shuffleAt > 0 && !shuffled && pairs.length - found === cfg.shuffleAt) startShuffle();
       } else {
         a.node.classList.add('is-wrong');
         b.node.classList.add('is-wrong');
         flipTimer = schedule(closeMismatch, cfg.flipBackMs);
+        failRun++;
+        if (cfg.failStreak > 0 && failRun >= cfg.failStreak) showToast('is-fail', cfg.failText, 1700);
         safeCall(onFail);
       }
     }
 
+    // ── Meldungen ──
+    function showToast(kind, text, ms) {
+      cancel(toastTimer);
+      toastText.textContent = text;
+      toast.className = 'sg-memory__toast ' + kind;
+      // Larry-Meldung deckt genau den Kopfbereich ab, damit die Karten sichtbar bleiben
+      toast.style.top = kind === 'is-fail' ? head.offsetTop + 'px' : '';
+      toast.style.minHeight = kind === 'is-fail' ? (status.offsetTop + status.offsetHeight - head.offsetTop) + 'px' : '';
+      void toast.offsetWidth; // Einblend-Animation neu starten
+      toast.classList.add('is-show');
+      toastTimer = schedule(hideToast, ms);
+    }
+    function hideToast() {
+      cancel(toastTimer);
+      toastTimer = null;
+      toast.classList.remove('is-show');
+    }
+
+    // ── Wirbelsturm: alle Karten fliegen herum und landen auf neuen Plätzen ──
+    function startShuffle() {
+      shuffled = true;
+      shuffling = true;
+      schedule(runShuffle, reduceMotion ? 200 : 500); // gefundenes Paar kurz zeigen
+    }
+
+    function newOrder() {
+      var nodes = Array.prototype.slice.call(board.children);
+      var slotOf = function (c) { return nodes.indexOf(c.node); };
+      var order;
+      // Neu mischen, bis jede noch verdeckte Karte woanders landet
+      for (var tries = 0; tries < 60; tries++) {
+        order = shuffle(cards.slice());
+        var ok = true;
+        for (var i = 0; i < order.length; i++) {
+          if (!order[i].matched && slotOf(order[i]) === i) { ok = false; break; }
+        }
+        if (ok) break;
+      }
+      return order;
+    }
+
+    function runShuffle() {
+      showToast('is-wind', cfg.shuffleText, cfg.shuffleMs + 1000); // endShuffle blendet aus
+      var br = board.getBoundingClientRect();
+      var first = cards.map(function (c) { return c.node.getBoundingClientRect(); });
+      newOrder().forEach(function (c) { board.appendChild(c.node); });
+      var canAnimate = typeof board.animate === 'function';
+
+      if (canAnimate) {
+        cards.forEach(function (c, i) {
+          var last = c.node.getBoundingClientRect();
+          var dx = first[i].left - last.left;
+          var dy = first[i].top - last.top;
+          var start = 'translate(' + dx + 'px,' + dy + 'px)';
+          var frames;
+          if (reduceMotion) {
+            frames = [
+              { transform: start, opacity: 1 },
+              { transform: start, opacity: 0, offset: 0.4 },
+              { transform: 'none', opacity: 0, offset: 0.6 },
+              { transform: 'none', opacity: 1 }
+            ];
+          } else {
+            // Zufällige Zwischenpunkte innerhalb des Spielfelds, mit Drehung
+            var pt = function () {
+              var x = br.left + Math.random() * Math.max(0, br.width - last.width) - last.left;
+              var y = br.top + Math.random() * Math.max(0, br.height - last.height) - last.top;
+              var r = Math.round((Math.random() - 0.5) * 540);
+              var sc = (0.7 + Math.random() * 0.35).toFixed(2);
+              return 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) rotate(' + r + 'deg) scale(' + sc + ')';
+            };
+            frames = [
+              { transform: start + ' rotate(0deg) scale(1)' },
+              { transform: pt(), offset: 0.22 },
+              { transform: pt(), offset: 0.48 },
+              { transform: pt(), offset: 0.74 },
+              { transform: 'translate(0px,0px) rotate(0deg) scale(1)' }
+            ];
+          }
+          c.node.style.zIndex = String(1 + Math.floor(Math.random() * 20));
+          var a = c.node.animate(frames, { duration: cfg.shuffleMs, easing: 'ease-in-out' });
+          if (paused) a.pause();
+          anims.push(a);
+        });
+      }
+      schedule(endShuffle, cfg.shuffleMs + 60);
+    }
+
+    function endShuffle() {
+      anims.forEach(function (a) { a.cancel(); });
+      anims = [];
+      cards.forEach(function (c) { c.node.style.zIndex = ''; });
+      hideToast();
+      shuffling = false;
+    }
+
     function win() {
       won = true;
+      hideToast();
       cards.forEach(function (c, i) {
         c.node.style.animationDelay = (reduceMotion ? 0 : i * 45) + 'ms';
         c.node.removeAttribute('tabindex');
@@ -502,6 +644,8 @@
         if (destroyed) return;
         destroyed = true;
         timers.slice().forEach(cancel);
+        anims.forEach(function (a) { a.cancel(); });
+        anims = [];
         if (fitFrame) cancelAnimationFrame(fitFrame);
         if (resizeObs) resizeObs.disconnect();
         root.removeEventListener('pointerdown', onPointerDown);
