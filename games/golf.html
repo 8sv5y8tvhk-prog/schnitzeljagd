@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <title>Testseite: Lurch-Runner</title>
+  <title>Testseite: Lurch-Golf</title>
   <link rel="stylesheet" href="../css/style.css">
   <style>
     /* Nur für die Testseite: Vollbild-Container + Testleiste unten */
@@ -36,23 +36,23 @@
   <div id="won" role="status">GEWONNEN</div>
   <div id="bar">
     <select id="preset" aria-label="Beispiel-Parameter">
-      <option value="default">Standard (keine Parameter)</option>
-      <option value="easy">Leicht: 25 Lichter, 5 Leben</option>
-      <option value="hard">Schwer: 60 Lichter, 3 Leben</option>
-      <option value="quick">Schnelltest: 5 Lichter, 1 Leben</option>
+      <option value="default">Standard (3 Bahnen)</option>
+      <option value="h2">Nur Bahn 2 (Portal &amp; Windmühle)</option>
+      <option value="h3">Nur Bahn 3 (Sprungschanze)</option>
+      <option value="strict">Bahn 1, nur 1 Extraschlag (Fehlversuch testen)</option>
     </select>
     <button id="restart" type="button">Neu starten</button>
     <div id="info"></div>
   </div>
 
-  <script src="./runner.js"></script>
+  <script src="./golf.js"></script>
   <script>
     (function () {
       var PRESETS = {
         default: {},
-        easy: { goal: 25, lives: 5, difficulty: 1, intro: 'Ganz entspannt: Sammle 25 Lichter.' },
-        hard: { goal: 60, lives: 3, difficulty: 3, title: 'Turbo-Runner', winText: 'Wahnsinn, du bist durch!' },
-        quick: { goal: 5, lives: 1, difficulty: 1 }
+        h2: { holes: [2] },
+        h3: { holes: [3], title: 'Schanzen-Golf', winText: 'Was für ein Sprung!' },
+        strict: { holes: 1, extraStrokes: 1 }
       };
 
       var stage = document.getElementById('stage');
@@ -69,7 +69,7 @@
         if (game) game.destroy();
         fails = 0; wins = 0; mounts++;
         wonBox.classList.remove('show');
-        game = window.SchnitzelGames.runner.mount(stage, {
+        game = window.SchnitzelGames.golf.mount(stage, {
           params: PRESETS[preset.value],
           onWin: function () { wins++; wonBox.classList.add('show'); show(); },
           onFail: function () { fails++; show(); }
@@ -79,7 +79,7 @@
 
       document.getElementById('restart').addEventListener('click', start);
       preset.addEventListener('change', start);
-      window.__runnerTest = { get game() { return game; }, start: start, stage: stage };
+      window.__golfTest = { get game() { return game; }, start: start, stage: stage };
       start();
     })();
   </script>

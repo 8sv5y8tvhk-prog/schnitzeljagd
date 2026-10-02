@@ -102,7 +102,7 @@ Ungültige oder fehlende Werte fallen stillschweigend auf den Standard zurück
 
 ---
 
-## Neon-Runner (`runner`)
+## Lurch-Runner (`runner`)
 
 Endlos-Läufer im Synthwave-Look: Der **Neon-Lurch** – ein Feuersalamander
 aus Licht – flitzt über eine Neon-Straße mit 3 Spuren auf eine gestreifte
@@ -163,7 +163,7 @@ mit der Zeit. Wer das Ziel an Lichtern erreicht, gewinnt.
 | `goal` | Zahl | `80` | So viele Lichter muss man sammeln (3–500). |
 | `lives` | Zahl | `3` | Leben pro Versuch (1–9). |
 | `difficulty` | Zahl | `2` | 1 = gemütlich, 2 = normal, 3 = schnell. Bestimmt Start-/Höchsttempo und Abstand der Hindernisse. |
-| `title` | Text | `"Neon-Runner"` | Überschrift der Startkarte. |
+| `title` | Text | `"Lurch-Runner"` | Überschrift der Startkarte. |
 | `label` | Text | `"Minispiel"` | Kleine Zeile über den Überschriften. |
 | `intro` | Text | `"Sammle die Lichter und weiche den pinken Hindernissen aus."` | Anleitungstext auf der Startkarte (die Steuerung wird automatisch darunter erklärt). |
 | `winText` | Text | `"Ziel erreicht"` | Text auf der Sieg-Karte. |
@@ -186,6 +186,79 @@ mit der Zeit. Wer das Ziel an Lichtern erreicht, gewinnt.
   },
   "question": "Vor dir liegt die Neon-Route. Schaffst du die Strecke?",
   "hint": "Bleib in der Mitte – von dort erreichst du jede Spur mit einem Wisch."
+}
+```
+
+---
+
+## Lurch-Golf (`golf`)
+
+Minigolf auf schwebenden Neon-Bahnen über einem leuchtenden Abgrund – der
+eingerollte Lurch ist der Ball. Schräge Perspektive von oben, alles live auf
+Canvas gezeichnet (keine Bilddateien).
+
+- **Steuerung:** Irgendwo auf den Bildschirm tippen, ziehen und loslassen
+  (Steinschleuder): Je weiter gezogen, desto fester; der Schuss geht in die
+  Gegenrichtung. Während des Ziehens zeigt eine Punktlinie die echte
+  vorausberechnete Bahn (ein Stück weit, inklusive erster Abpraller), ein
+  Kraftring wechselt von Cyan über Gelb zu Magenta.
+- **Die Bahnen:**
+  1. *Warmlaufen* (Par 2): Beschleuniger-Feld, zwei Bumper.
+  2. *Portal & Windmühle* (Par 3): rotierende Windmühle im Tor, Portalpaar
+     als riskante Abkürzung, Loch in einer Tasche hinter einer Bande.
+  3. *Sprungschanze* (Par 3): Mit genug Schwung über die Schanze und den
+     Abgrund auf die Insel (Zeitlupe im Flug!) – oder sicher außen über die
+     schmale Brücke. Zu schwach oder daneben: Absturz, +1 Schlag, zurück an
+     die letzte Position.
+- **Der Lurch-Ball:** dreht sich physikalisch korrekt, seine gelben
+  Leuchtflecken rollen mit. Liegt er still, schaut er mit Kulleraugen heraus,
+  blinzelt und blickt in die Zielrichtung.
+- **Effekte:** Kameraflug vom Loch zum Abschlag mit Bahn-Banner, Lichtsäule
+  und flatternde Hologramm-Fahne am Loch, Bumper blitzen auf, Portale mit
+  Wirbeln, Funken beim Aufprall, Lichtschweif, Einlochen mit Spirale,
+  Wertung („Hole in One!", „Birdie!", „Par" …) und Feuerwerksraketen,
+  schwebende Drahtkörper im Abgrund als Tiefenebene.
+- **Fehlversuch:** Pro Bahn sind höchstens Par + `extraStrokes` Schläge
+  erlaubt. Ist der Lurch danach nicht im Loch, erscheint „Zu viele Schläge",
+  `onFail` wird aufgerufen und „Nochmal" startet die Bahn neu.
+- **Sieg:** Nach der letzten Bahn erscheint eine Scorekarte (Schläge je
+  Bahn, Gesamt, unter/über Par) mit Feuerwerk, nach ca. 2,4 s `onWin`
+  (genau einmal). Gewonnen ist, wer alle Bahnen einlocht.
+- **Pause:** Beim Verlassen der App hält das Spiel an („Pause", „Weiter").
+- Physik in festen Teilschritten (240 pro Sekunde), Ballrollen, Reibung,
+  Banden, Bumper mit Schwung, bewegte Windmühle, Portale, Schanze mit Flug.
+- Datei: `games/golf.js` (ca. 70 KB), Testseite: `games/golf.html`.
+  `_snapshot()`, `_predict()` und `_screenOf()` am Rückgabeobjekt dienen nur
+  automatisierten Tests (ohne Einfluss auf das Spiel); die App braucht sie nicht.
+
+### Parameter
+
+| Parameter | Typ | Standard | Bedeutung |
+|---|---|---|---|
+| `holes` | Zahl oder Liste | `3` | Zahl = die ersten n Bahnen (1–3). Liste = bestimmte Bahnen, z. B. `[1, 3]`. |
+| `extraStrokes` | Zahl | `4` | Erlaubte Schläge pro Bahn = Par + dieser Wert (1–20). |
+| `title` | Text | `"Lurch-Golf"` | Überschrift der Startkarte. |
+| `label` | Text | `"Minispiel"` | Kleine Zeile über den Überschriften. |
+| `intro` | Text | `"Bring den eingerollten Lurch mit möglichst wenigen Schlägen ins Loch."` | Anleitungstext auf der Startkarte (die Steuerung wird automatisch darunter erklärt). |
+| `winText` | Text | `"Alle Bahnen geschafft!"` | Text auf der Scorekarte. |
+| `startText` | Text | `"Los geht's"` | Beschriftung des Startknopfs. |
+
+### Beispiel für eine Stadt-Datei
+
+```json
+"riddle": {
+  "type": "game",
+  "game": "golf",
+  "params": {
+    "holes": [1, 3],
+    "extraStrokes": 4,
+    "title": "Lurch-Golf am Schlossplatz",
+    "intro": "Zwei Bahnen, ein Lurch. Schaffst du die Schanze?",
+    "winText": "Eingelocht! Der nächste Hinweis wartet.",
+    "startText": "Abschlag!"
+  },
+  "question": "Der Lurch hat sich eingerollt und will spielen.",
+  "hint": "Auf Bahn 3 führt die schmale Brücke rechts sicher zur Insel."
 }
 ```
 

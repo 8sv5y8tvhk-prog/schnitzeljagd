@@ -1,4 +1,4 @@
-/* Schnitzeljagd-Minispiel „Neon-Runner"
+/* Schnitzeljagd-Minispiel „Lurch-Runner"
  * Endlos-Läufer auf einer Neon-Straße mit 3 Spuren (Canvas, Pseudo-3D).
  * Registriert sich als window.SchnitzelGames.runner. Vertrag: games/README.md
  */
@@ -11,7 +11,7 @@
     goal: 80,
     lives: 3,
     difficulty: 2,
-    title: 'Neon-Runner',
+    title: 'Lurch-Runner',
     label: 'Minispiel',
     intro: 'Sammle die Lichter und weiche den pinken Hindernissen aus.',
     winText: 'Ziel erreicht',
@@ -1931,7 +1931,7 @@
 
   window.SchnitzelGames = window.SchnitzelGames || {};
   window.SchnitzelGames[NAME] = {
-    title: 'Neon-Runner',
+    title: 'Lurch-Runner',
     mount: mount
   };
 })();
