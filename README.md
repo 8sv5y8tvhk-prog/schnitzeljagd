@@ -111,10 +111,21 @@ Claude erzeugt dann die JSON-Datei mit Story, Rätseln und Koordinaten und träg
   "finale": {
     "title": "Finale-Überschrift",
     "text": "Auflösung der Geschichte",
-    "personalMessage": "Optionale persönliche Nachricht im Rahmen"  // oder Feld löschen
+    "personalMessage": "Optionale persönliche Nachricht im Rahmen",  // oder Feld löschen
+    "game": {                     // optional: Schlussspiel nach der letzten Station, vor dem Finale
+      "game": "sign",             // Name eines Spiels aus games/ (siehe games/README.md)
+      "title": "Überschrift des Bildschirms vor dem Spiel",
+      "story": "Überleitungstext",
+      "startText": "Beschriftung des Startknopfs",
+      "params": { }               // Spielparameter, z. B. das Lösungswort
+    }
   }
 }
 ```
+
+Das Schlussspiel steht immer am Ende, egal wie viele Stationen es gibt. Wird
+die App während des Spiels geschlossen, geht es beim nächsten Öffnen direkt
+dort weiter.
 
 Koordinaten findest du per Google Maps: Rechtsklick auf den Ort → die Zahlen oben anklicken (kopiert `lat, lng`).
 

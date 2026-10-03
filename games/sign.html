@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Testseite: Leuchtreklame</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    /* Nur für die Testseite: Vollbild-Container + Testleiste unten */
+    html, body { height: 100%; }
+    body { display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow: hidden; }
+    #stage { flex: 1 1 auto; min-height: 0; position: relative; }
+    #bar {
+      flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      padding: 10px 12px; border-top: 1px solid var(--cyan-30); background: var(--bg);
+    }
+    #bar select, #bar button {
+      font-family: inherit; font-size: 15px; min-height: 44px; border-radius: 12px;
+      border: 1px solid var(--cyan-30); background: transparent; color: var(--text); padding: 0 12px;
+    }
+    #bar button { background: var(--cyan); color: var(--on-cyan); font-weight: 700; border: none; }
+    #bar select { flex: 1 1 140px; min-width: 0; }
+    #info { flex: 1 1 100%; font-size: 13px; color: var(--text-2); letter-spacing: .04em; }
+    #won {
+      display: none; position: absolute; left: 16px; right: 16px; top: 40%; transform: translateY(-50%);
+      padding: 22px; text-align: center; border-radius: 18px; background: var(--bg);
+      border: 2px solid var(--ok); color: var(--ok); font-size: 30px; font-weight: 700; letter-spacing: -.02em;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, .6); z-index: 10;
+    }
+    #won.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="won" role="status">GEWONNEN</div>
+  <div id="bar">
+    <select id="preset" aria-label="Beispiel-Parameter">
+      <option value="default">Standard (LURCH)</option>
+      <option value="circle">Kreis + Untertitel (NEON / BAR &amp; GRILL)</option>
+      <option value="long">Langer Name, 4 Stromkreise</option>
+      <option value="quick">Schnelltest: 1 Stromkreis</option>
+    </select>
+    <button id="restart" type="button">Neu starten</button>
+    <div id="info"></div>
+  </div>
+
+  <script src="./sign.js"></script>
+  <script>
+    (function () {
+      var PRESETS = {
+        default: {},
+        circle: { word: 'NEON', subtitle: 'BAR & GRILL', circle: true, rounds: 4 },
+        long: { word: 'ZUM GOLDENEN HIRSCH', rounds: 4, title: 'Kurzschluss!' },
+        quick: { word: 'OK', rounds: 1, rain: false }
+      };
+
+      var stage = document.getElementById('stage');
+      var info = document.getElementById('info');
+      var wonBox = document.getElementById('won');
+      var preset = document.getElementById('preset');
+      var game = null, fails = 0, wins = 0, mounts = 0;
+
+      function show() {
+        info.textContent = 'Fehlversuche: ' + fails + ' · onWin-Aufrufe: ' + wins + ' · Starts: ' + mounts;
+      }
+
+      function start() {
+        if (game) game.destroy();
+        fails = 0; wins = 0; mounts++;
+        wonBox.classList.remove('show');
+        game = window.SchnitzelGames.sign.mount(stage, {
+          params: PRESETS[preset.value],
+          onWin: function () { wins++; wonBox.classList.add('show'); show(); },
+          onFail: function () { fails++; show(); }
+        });
+        show();
+      }
+
+      document.getElementById('restart').addEventListener('click', start);
+      preset.addEventListener('change', start);
+      window.__signTest = { get game() { return game; }, start: start, stage: stage };
+      start();
+    })();
+  </script>
+</body>
+</html>

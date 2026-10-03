@@ -262,6 +262,76 @@ Canvas gezeichnet (keine Bilddateien).
 }
 ```
 
+---
+
+## Leuchtreklame (`sign`)
+
+Kabel-Puzzle mit Lösungswort: Oben hängt ein dunkles Neon-Schild an einer
+nassen Backsteinwand im Regen, der Lurch schläft darauf. Unten im
+Schaltkasten müssen Kabelstücke gedreht werden, bis der Strom vom Stecker
+(links) zur Klemme (rechts) fließt. Jeder geschlossene Stromkreis jagt einen
+Lichtimpuls das Kabel hinauf, und die nächsten Buchstaben zünden flackernd.
+Am Ende steht das Lösungswort leuchtend da – ideal als Hinweis auf den
+nächsten Ort (z. B. ein Restaurant).
+
+- **Steuerung:** Kabelstück antippen = 90° drehen. Strom fließt sichtbar
+  durch alle verbundenen Stücke; es zählt nur, dass Stecker und Klemme
+  verbunden sind (Abzweige dürfen offen bleiben).
+- **Runden:** Das Wort wird auf `rounds` Stromkreise verteilt (bei 4
+  Buchstaben und 4 Runden: ein Buchstabe pro Runde). Die Klemme zeigt, welche
+  Buchstaben als Nächstes zünden. Die Raster wachsen (4×4 bis 5×6, auf
+  kleinen Geräten automatisch kleiner, Kacheln immer mindestens 46 px), und
+  pro Runde liegen mehr falsch gedrehte Stücke auf dem Lösungsweg.
+- **Tipp ohne Frust:** Nach `hintAfter` Sekunden in einer Runde pulsiert eine
+  falsch gedrehte Kachel des Lösungswegs gelb, danach alle 15 s eine weitere.
+- **Finale:** Kasten blendet aus, die Kamera fährt auf das Schild zu. Mit
+  `circle` malt sich ein Pinselkreis in Magenta um das Wort,
+  `subtitle` zündet als zweite Zeile in warmem Gelb, der Lurch wacht auf,
+  grinst und hüpft. Karte „Es leuchtet" mit `winText`, ca. 2 s später `onWin`.
+- Echte Neon-Optik: Röhren aus/an mit Zündflackern, leises Summen,
+  gelegentliches Aussetzen einzelner Buchstaben, Licht fällt auf die Wand.
+- Kein `onFail` – das Spiel ist immer lösbar. Pausiert im Hintergrund.
+- Bei „Bewegung reduzieren": kein Flackern, kein Regen, weniger Funken.
+- **Geheimhaltung:** Das Lösungswort gehört nur in die verschlüsselte
+  Stadt-Datei. Standardwort und Beispiele hier sind bewusst neutral.
+- Datei: `games/sign.js` (ca. 56 KB), Testseite: `games/sign.html`.
+  `_snapshot()` und `_solutionTaps()` dienen nur automatisierten Tests.
+
+### Parameter
+
+| Parameter | Typ | Standard | Bedeutung |
+|---|---|---|---|
+| `word` | Text | `"LURCH"` | Das Lösungswort auf dem Schild (max. 24 Zeichen, Leerzeichen erlaubt). Kurze Wörter wirken am größten. |
+| `subtitle` | Text | `""` | Zweite, kleine Zeile, die im Finale zündet (max. 32 Zeichen). Leer = keine. |
+| `circle` | ja/nein | `false` | Pinselkreis um das Wort im Finale. |
+| `rounds` | Zahl | `4` | Anzahl der Stromkreise (1–8, höchstens so viele wie Buchstaben). |
+| `hintAfter` | Zahl (s) | `40` | Nach so vielen Sekunden pro Runde erscheint der erste Tipp (5–600). |
+| `rain` | ja/nein | `true` | Regen vor der Wand. |
+| `title` | Text | `"Leuchtreklame"` | Überschrift der Startkarte. |
+| `label` | Text | `"Minispiel"` | Kleine Zeile über den Überschriften. |
+| `intro` | Text | `"Dreh die Kabelstücke, bis der Strom vom Stecker zur Klemme fließt. …"` | Anleitung auf der Startkarte. |
+| `winText` | Text | `"Das Schild leuchtet – folge dem Licht!"` | Text auf der Schlusskarte. |
+| `startText` | Text | `"Strom an"` | Beschriftung des Startknopfs. |
+
+### Beispiel für eine Stadt-Datei
+
+```json
+"riddle": {
+  "type": "game",
+  "game": "sign",
+  "params": {
+    "word": "ZUM LURCH",
+    "subtitle": "BAR & GRILL",
+    "circle": true,
+    "rounds": 4,
+    "winText": "Das Schild leuchtet – dort schließt sich der Kreis.",
+    "startText": "Strom an"
+  },
+  "question": "Ein Schild ist ausgefallen. Bring den Strom zurück!",
+  "hint": "Fang am Stecker an und folge dem leuchtenden Kabel."
+}
+```
+
 ### Hinweis für den Einbau in die App
 
 Der Service Worker der App (`sw.js`) liefert Dateien aus seinem Cache. Neue

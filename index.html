@@ -127,6 +127,18 @@
     <button id="btn-next-station" class="btn btn-primary">Weiter geht's</button>
   </section>
 
+  <!-- Schlussspiel nach der letzten Station (optional, finale.game) -->
+  <section id="screen-lastgame" class="screen">
+    <div class="start-hero">
+      <p class="subtitle">Finale · Ein letzter Schritt</p>
+    </div>
+    <div class="paper">
+      <h2 id="lastgame-title"></h2>
+      <div id="lastgame-story" class="story-text"></div>
+    </div>
+    <button id="btn-lastgame-start" class="btn btn-primary">Spiel starten</button>
+  </section>
+
   <!-- Finale -->
   <section id="screen-finale" class="screen">
     <div class="finale-emblem" aria-hidden="true">
@@ -214,6 +226,7 @@
   <script src="games/memory.js"></script>
   <script src="games/runner.js"></script>
   <script src="games/golf.js"></script>
+  <script src="games/sign.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

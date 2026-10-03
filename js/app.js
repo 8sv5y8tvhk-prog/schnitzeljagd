@@ -577,7 +577,8 @@ function showSolved() {
   const isLast = state.stationIndex === state.hunt.stations.length - 1;
 
   if (isLast) {
-    showFinale();
+    if (state.hunt.finale.game) showFinaleGame();
+    else showFinale();
     return;
   }
 
@@ -842,6 +843,9 @@ const game = {
   params: null,
   fails: 0,
   onDone: null,
+  mode: 'free',     // 'free' = Spielemodus, 'hunt' = Teil einer Jagd
+  doneText: '',
+  won: false,
 };
 
 function availableGames() {
@@ -873,15 +877,22 @@ function setGameStatus() {
     game.fails === 1 ? '1 Fehlversuch' : `${game.fails} Fehlversuche`;
 }
 
-function openGame(name, params, { onDone } = {}) {
+function openGame(name, params, { onDone, mode = 'free', doneText = 'Weiter' } = {}) {
   unmountGame();
   const def = (window.SchnitzelGames || {})[name];
   if (!def) return;
   game.name = name;
   game.params = params || {};
   game.onDone = onDone || null;
+  game.mode = mode;
+  game.doneText = doneText;
+  game.won = false;
   game.fails = 0;
   setGameStatus();
+  const hunt = mode === 'hunt';
+  $('btn-game-again').classList.toggle('hidden', hunt);
+  $('btn-game-done').textContent = hunt ? doneText : 'Zurück zur Auswahl';
+  $('btn-game-done').className = `btn ${hunt ? 'btn-primary' : 'btn-ghost'}`;
   $('game-result').classList.add('hidden');
   $('game-overlay').classList.remove('hidden');
   document.body.classList.add('game-open');
@@ -898,6 +909,7 @@ function openGame(name, params, { onDone } = {}) {
 }
 
 function handleGameWin() {
+  game.won = true;
   confettiBurst(60);
   $('game-result-text').textContent =
     game.fails === 0 ? 'Fehlerfrei gelöst' : `Gelöst mit ${game.fails} ${game.fails === 1 ? 'Fehlversuch' : 'Fehlversuchen'}`;
@@ -918,7 +930,31 @@ function closeGame() {
   document.body.classList.remove('game-open');
   const done = game.onDone;
   game.onDone = null;
-  if (done) done();
+  if (done) done(game.won);
+}
+
+/* ── Schlussspiel nach der letzten Station (finale.game) ── */
+function showFinaleGame() {
+  const fg = state.hunt.finale.game;
+  saveProgress(state.cityId, { station: state.stationIndex, finaleGame: true });
+  $('lastgame-title').textContent = fg.title || 'Ein letzter Schritt';
+  $('lastgame-story').textContent = fg.story || '';
+  $('btn-lastgame-start').textContent = fg.startText || 'Spiel starten';
+  showScreen('screen-lastgame');
+}
+
+function startFinaleGame() {
+  const fg = state.hunt.finale.game;
+  // Fehlt das Spiel (z. B. veraltete App), soll die Jagd nicht hängen bleiben
+  if (!(window.SchnitzelGames || {})[fg.game]) {
+    showFinale();
+    return;
+  }
+  openGame(fg.game, fg.params || {}, {
+    mode: 'hunt',
+    doneText: 'Weiter zum Finale',
+    onDone: (won) => { if (won) showFinale(); },
+  });
 }
 
 /* ── Events ── */
@@ -930,11 +966,17 @@ $('btn-games-back').addEventListener('click', () => showScreen('screen-start'));
 $('btn-game-close').addEventListener('click', closeGame);
 $('btn-game-done').addEventListener('click', closeGame);
 $('btn-game-again').addEventListener('click', () =>
-  openGame(game.name, game.params, { onDone: game.onDone }));
+  openGame(game.name, game.params, { onDone: game.onDone, mode: game.mode, doneText: game.doneText }));
+$('btn-lastgame-start').addEventListener('click', startFinaleGame);
 
 $('btn-start-hunt').addEventListener('click', () => {
-  if (!loadProgress(state.cityId).startedAt) {
+  const prog = loadProgress(state.cityId);
+  if (!prog.startedAt) {
     saveProgress(state.cityId, { startedAt: Date.now() });
+  }
+  if (prog.finaleGame && state.hunt.finale.game) {
+    showFinaleGame();
+    return;
   }
   showStation();
 });
