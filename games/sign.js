@@ -446,7 +446,7 @@
       lay.wordL = x0;
       // Pinselkreis
       if (cfg.circle) {
-        var Rr = Math.min(areaH * 0.47, Math.max(tw * 0.62, fs * 1.6), W * 0.46);
+        var Rr = Math.min((areaH - 28) / 2.3, W * 0.42); // feste Größe: verrät nichts über die Wortlänge; Rahmen passt in den Bereich
         lay.er = Rr;
         ring = buildBrushRing(Rr);
       }
@@ -456,11 +456,11 @@
         lay.subY = lay.cy + fs * 0.62 + sfs * 0.7;
       }
       // Rahmen um das Schild
-      var fw = (cfg.circle ? lay.er * 2 + 30 : tw + fs * 0.9);
+      var fw = Math.max(cfg.circle ? lay.er * 2 + 30 : tw + fs * 0.9, W * 0.84);
       lay.frameW = Math.min(W - 24, fw);
       lay.frameL = W / 2 - lay.frameW / 2;
       var cpad = cfg.circle ? 14 + lay.er * 0.14 : 0;
-      if (cfg.circle) lay.frameW = Math.min(W - 24, lay.er * 2 + cpad * 2);
+      if (cfg.circle) lay.frameW = Math.min(W - 24, Math.max(lay.er * 2 + cpad * 2, W * 0.84));
       lay.frameL = W / 2 - lay.frameW / 2;
       lay.frameT = cfg.circle ? lay.cy - lay.er - cpad : lay.cy - fs * 0.85;
       lay.frameB = cfg.circle ? lay.cy + lay.er + cpad : (cfg.subtitle ? lay.subY + fs * 0.42 : lay.cy + fs * 0.85);
@@ -883,6 +883,8 @@
       for (i = 0; i < glyphs.length; i++) {
         var gl = glyphs[i];
         if (gl.space) continue;
+        // Überraschung: Buchstaben sind erst nach dem Zünden sichtbar
+        if (!gl.on || gl.at < 0 || time < gl.at) continue;
         var dx = gl.x - gl.unlit.pad, dy = lay.cy - gl.unlit.h / 2;
         ctx.drawImage(gl.unlit.c, dx, dy, gl.unlit.w, gl.unlit.h);
         var a = glyphAlpha(gl);
@@ -897,8 +899,8 @@
       // Untertitel
       if (sub) {
         var so = sub.off;
-        ctx.drawImage(so.c, W / 2 - so.w / 2, lay.subY - so.h / 2, so.w, so.h);
         if (subOn >= 0) {
+          ctx.drawImage(so.c, W / 2 - so.w / 2, lay.subY - so.h / 2, so.w, so.h);
           var t = time - subOn, sa = reduceMotion ? 1 : (t < 0.5 ? (Math.sin(t * 60) > 0 ? 1 : 0.15) : 0.95 + 0.05 * Math.sin(time * 90));
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = sa;
@@ -1195,24 +1197,12 @@
       glowStroke(on ? CYAN : '120,140,160', 1.2, on ? 1 : 0.5);
       ctx.globalCompositeOperation = 'source-over';
       // Buchstaben dieser Runde auf der Klemme
-      var grp = groups[Math.min(round, groups.length - 1)] || [];
-      var txt = grp.map(function (gi) { return glyphs[gi] ? glyphs[gi].ch : ''; }).join('');
+      var txt = '?'; // die nächsten Buchstaben bleiben eine Überraschung
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = on ? '#ffffff' : 'rgba(234,246,251,0.55)';
-      if (txt.length <= 2) {
-        ctx.font = '700 ' + Math.round(Math.max(11, s * 1.05)) + 'px "Space Grotesk", sans-serif';
-        ctx.fillText(txt, x, y + 1);
-      } else {
-        // Mehrere Buchstaben: Beschriftung über der Klemme, rechtsbündig am Kasten
-        ctx.font = '700 12px "Space Grotesk", sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillStyle = on ? '#ffffff' : 'rgba(64,220,255,0.85)';
-        ctx.fillText(txt, x + s, y - s - 9);
-        ctx.beginPath();
-        ctx.arc(x, y, s * 0.28, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.font = '700 ' + Math.round(Math.max(11, s * 1.05)) + 'px "Space Grotesk", sans-serif';
+      ctx.fillText(txt, x, y + 1);
     }
 
     function drawRain() {

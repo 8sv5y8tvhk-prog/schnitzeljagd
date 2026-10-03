@@ -278,8 +278,7 @@ nächsten Ort (z. B. ein Restaurant).
   durch alle verbundenen Stücke; es zählt nur, dass Stecker und Klemme
   verbunden sind (Abzweige dürfen offen bleiben).
 - **Runden:** Das Wort wird auf `rounds` Stromkreise verteilt (bei 4
-  Buchstaben und 4 Runden: ein Buchstabe pro Runde). Die Klemme zeigt, welche
-  Buchstaben als Nächstes zünden. Die Raster wachsen (4×4 bis 5×6, auf
+  Buchstaben und 4 Runden: ein Buchstabe pro Runde). Die Raster wachsen (4×4 bis 5×6, auf
   kleinen Geräten automatisch kleiner, Kacheln immer mindestens 46 px), und
   pro Runde liegen mehr falsch gedrehte Stücke auf dem Lösungsweg.
 - **Tipp ohne Frust:** Nach `hintAfter` Sekunden in einer Runde pulsiert eine
@@ -288,6 +287,9 @@ nächsten Ort (z. B. ein Restaurant).
   `circle` malt sich ein Pinselkreis in Magenta um das Wort,
   `subtitle` zündet als zweite Zeile in warmem Gelb, der Lurch wacht auf,
   grinst und hüpft. Karte „Es leuchtet" mit `winText`, ca. 2 s später `onWin`.
+- **Überraschung:** Das Schild ist anfangs leer. Jeder Buchstabe (und der
+  Untertitel) wird erst sichtbar, wenn er zündet. Die Klemme zeigt nur „?",
+  und Schild- bzw. Kreisgröße hängen nicht von der Wortlänge ab.
 - Echte Neon-Optik: Röhren aus/an mit Zündflackern, leises Summen,
   gelegentliches Aussetzen einzelner Buchstaben, Licht fällt auf die Wand.
 - Kein `onFail` – das Spiel ist immer lösbar. Pausiert im Hintergrund.
