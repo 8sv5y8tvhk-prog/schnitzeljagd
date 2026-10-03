@@ -158,6 +158,14 @@ h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 }
 
 .footnote { color: var(--text-3); font-size: 12.5px; line-height: 1.6; margin-top: auto; }
+.app-version {
+  margin-top: auto;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--text-3);
+}
 
 /* ── Papier: modernes weißes Blatt für Story & Urkunde ── */
 .paper {

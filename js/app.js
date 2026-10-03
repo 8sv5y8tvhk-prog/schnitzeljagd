@@ -109,6 +109,11 @@ async function shrinkImage(file, max = 1600) {
 
 /* ── Navigation zwischen Screens ── */
 function showScreen(id) {
+  // Ein Update, das während einer Jagd ankam, wird beim Zurückkehren eingespielt
+  if (id === 'screen-start' && state.updatePending) {
+    location.reload();
+    return;
+  }
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   $(id).classList.add('active');
   window.scrollTo(0, 0);
@@ -181,6 +186,41 @@ function confettiBurst(count = 60) {
   })(t0);
 }
 
+/* ── Updates & Versionsanzeige ──
+ * Neue Versionen übernimmt der Service Worker sofort (skipWaiting/claim).
+ * Die Seite lädt sich dann einmal neu – aber nur auf dem Startbildschirm,
+ * damit niemand mitten in einer Station oder einem Spiel herausfliegt.
+ */
+function watchForUpdates() {
+  const sw = navigator.serviceWorker;
+  const hadController = !!sw.controller; // beim allerersten Besuch nicht neu laden
+  sw.addEventListener('controllerchange', () => {
+    if (!hadController || state.updatePending === 'reloading') return;
+    const onStart = $('screen-start').classList.contains('active') && !game.instance;
+    if (onStart) {
+      state.updatePending = 'reloading';
+      location.reload();
+    } else {
+      state.updatePending = true;
+    }
+  });
+  showAppVersion();
+}
+
+function showAppVersion() {
+  const sw = navigator.serviceWorker;
+  if (!sw.controller) {
+    sw.ready.then(() => setTimeout(showAppVersion, 300)).catch(() => {});
+    return;
+  }
+  const channel = new MessageChannel();
+  channel.port1.onmessage = (e) => {
+    const v = String(e.data || '').replace('schnitzeljagd-', '');
+    if (v) $('app-version').textContent = `Version ${v}`;
+  };
+  sw.controller.postMessage('version', [channel.port2]);
+}
+
 /* ── Start: Städte laden und anzeigen ── */
 async function init() {
   try {
@@ -194,6 +234,7 @@ async function init() {
   $('btn-games').classList.toggle('hidden', availableGames().length === 0);
 
   if ('serviceWorker' in navigator) {
+    watchForUpdates();
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 }

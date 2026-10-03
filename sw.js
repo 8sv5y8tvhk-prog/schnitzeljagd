@@ -2,7 +2,7 @@
  * Mobilfunknetz unterwegs zuverlässig lädt. Daten (data/*.json) werden
  * network-first geladen, damit neue Städte/Korrekturen sofort ankommen. */
 
-const CACHE = 'schnitzeljagd-v17';
+const CACHE = 'schnitzeljagd-v18';
 const SHELL = [
   './',
   './index.html',
@@ -19,8 +19,17 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
+  // cache: 'reload' umgeht den HTTP-Cache des Browsers, sonst kann ein
+  // Update noch minutenlang alte Dateien in den neuen Cache übernehmen
+  e.waitUntil(caches.open(CACHE).then((c) =>
+    c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))
+  ));
   self.skipWaiting();
+});
+
+// Die App fragt so nach der laufenden Version (Anzeige auf dem Startbildschirm)
+self.addEventListener('message', (e) => {
+  if (e.data === 'version' && e.ports && e.ports[0]) e.ports[0].postMessage(CACHE);
 });
 
 self.addEventListener('activate', (e) => {
