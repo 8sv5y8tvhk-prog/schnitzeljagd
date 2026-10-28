@@ -111,6 +111,13 @@ Claude erzeugt dann die JSON-Datei mit Story, Rätseln und Koordinaten und träg
         "hint": "Rätsel-Tipp (öffnet sich nach 3 Fehlversuchen automatisch)",
         "wrongText": "Text bei falscher Antwort (optional)"
       },
+      "challenge": {                // optional: Pflicht-Minispiel nach dem Rätsel, erst danach geht es weiter
+        "game": "runner",           // Name eines Spiels aus games/
+        "title": "Die Challenge",
+        "story": "Text auf dem Bildschirm vor dem Spiel",
+        "startText": "Challenge starten",
+        "params": { "goal": 40 }    // Spielparameter (siehe games/README.md)
+      },
       "photoTask": "Optionale Foto-Aufgabe, erscheint nach dem Lösen",  // fürs Album
       "solvedText": "Story-Kapitel nach dem Lösen (bei der letzten Station leer lassen)"
     }

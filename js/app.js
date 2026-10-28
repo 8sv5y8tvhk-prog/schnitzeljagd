@@ -721,7 +721,7 @@ function evaluateAnswer(given, choiceBtn = null) {
     if (choiceBtn) choiceBtn.classList.add('choice-ok');
     if (navigator.vibrate) navigator.vibrate(150);
     confettiBurst();
-    setTimeout(showSolved, 900);
+    setTimeout(st.challenge ? showChallenge : showSolved, 900);
     return;
   }
 
@@ -791,7 +791,7 @@ function showSolved() {
   $('solved-text').textContent = st.solvedText;
   $('progress-fill').style.width =
     `${((state.stationIndex + 1) / state.hunt.stations.length) * 100}%`;
-  saveProgress(state.cityId, { station: state.stationIndex + 1 });
+  saveProgress(state.cityId, { station: state.stationIndex + 1, challenge: false });
   mountPhotoSection('solved-photo-slot', st);
   showScreen('screen-solved');
 }
@@ -1160,10 +1160,46 @@ function closeGame() {
   if (done) done(game.won);
 }
 
+/* ── Challenge: Pflicht-Spiel nach dem Rätsel einer Station (station.challenge) ──
+ * Erst nach dem Sieg kommt der Text nach dem Lösen. Fortschritt merkt
+ * `challenge: true`, damit ein Neustart direkt bei der Challenge weitermacht.
+ */
+function showChallenge() {
+  const ch = currentStation().challenge;
+  saveProgress(state.cityId, { station: state.stationIndex, challenge: true });
+  state.gameStep = startChallenge;
+  $('lastgame-eyebrow').textContent = `Station ${state.stationIndex + 1} · Challenge`;
+  $('lastgame-title').textContent = ch.title || 'Die Challenge';
+  $('lastgame-story').textContent = ch.story || '';
+  $('btn-lastgame-start').textContent = ch.startText || 'Challenge starten';
+  showScreen('screen-lastgame');
+}
+
+function startChallenge() {
+  const ch = currentStation().challenge;
+  // Fehlt das Spiel (z. B. veraltete App), soll die Jagd nicht hängen bleiben
+  if (!(window.SchnitzelGames || {})[ch.game]) {
+    finishChallenge();
+    return;
+  }
+  openGame(ch.game, ch.params || {}, {
+    mode: 'hunt',
+    doneText: 'Weiter',
+    onDone: (won) => { if (won) finishChallenge(); },
+  });
+}
+
+function finishChallenge() {
+  saveProgress(state.cityId, { challenge: false });
+  showSolved();
+}
+
 /* ── Schlussspiel nach der letzten Station (finale.game) ── */
 function showFinaleGame() {
   const fg = state.hunt.finale.game;
   saveProgress(state.cityId, { station: state.stationIndex, finaleGame: true });
+  state.gameStep = startFinaleGame;
+  $('lastgame-eyebrow').textContent = 'Finale · Ein letzter Schritt';
   $('lastgame-title').textContent = fg.title || 'Ein letzter Schritt';
   $('lastgame-story').textContent = fg.story || '';
   $('btn-lastgame-start').textContent = fg.startText || 'Spiel starten';
@@ -1194,7 +1230,7 @@ $('btn-game-close').addEventListener('click', closeGame);
 $('btn-game-done').addEventListener('click', closeGame);
 $('btn-game-again').addEventListener('click', () =>
   openGame(game.name, game.params, { onDone: game.onDone, mode: game.mode, doneText: game.doneText }));
-$('btn-lastgame-start').addEventListener('click', startFinaleGame);
+$('btn-lastgame-start').addEventListener('click', () => { if (state.gameStep) state.gameStep(); });
 
 $('btn-start-hunt').addEventListener('click', () => {
   const prog = loadProgress(state.cityId);
@@ -1203,6 +1239,10 @@ $('btn-start-hunt').addEventListener('click', () => {
   }
   if (prog.finaleGame && state.hunt.finale.game) {
     showFinaleGame();
+    return;
+  }
+  if (prog.challenge && currentStation() && currentStation().challenge) {
+    showChallenge();
     return;
   }
   showStation();
