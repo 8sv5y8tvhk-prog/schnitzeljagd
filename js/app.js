@@ -817,9 +817,28 @@ function showFinale() {
     personal.classList.add('hidden');
   }
 
+  // Optionales Ziel nach der Jagd (z. B. ein Restaurant): Fußweg in der Karten-App
+  const dest = state.hunt.finale.destination;
+  const destBtn = $('btn-destination');
+  if (dest) {
+    destBtn.href = walkingRouteUrl(dest.lat, dest.lng);
+    destBtn.textContent = dest.label || `Weg zu ${dest.name}`;
+    destBtn.classList.remove('hidden');
+  } else {
+    destBtn.classList.add('hidden');
+  }
+
   mountPhotoSection('finale-photo-slot', currentStation());
   showScreen('screen-finale');
   confettiBurst(110);
+}
+
+function walkingRouteUrl(lat, lng) {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return ios
+    ? `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=w`
+    : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
 }
 
 /* ── Album ── */

@@ -192,6 +192,12 @@ h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
   width: 100%;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+.btn-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
 .btn-primary {
   background: var(--cyan);
   color: var(--on-cyan);

@@ -5,6 +5,8 @@
  * tools/encrypt.html (Verschlüsseln) gemeinsam benutzt.
  * Codes sind unempfindlich gegen Groß-/Kleinschreibung, Leerzeichen
  * und Umlaute – "Geheim 42" und "GEHEIM42" sind derselbe Code.
+ * Datumsangaben werden vereinheitlicht: "1.2.2003", "01.02.03" und
+ * "01-02-2003" ergeben alle denselben Code.
  */
 
 const HuntCrypto = {
@@ -12,7 +14,12 @@ const HuntCrypto = {
   ITERATIONS: 300000,
 
   normalizeCode(code) {
-    return code
+    const date = String(code).trim().match(/^(\d{1,2})[.\-/ ]+(\d{1,2})[.\-/ ]+(\d{4}|\d{2})$/);
+    if (date) {
+      const year = date[3].length === 2 ? `20${date[3]}` : date[3];
+      return date[1].padStart(2, '0') + date[2].padStart(2, '0') + year;
+    }
+    return String(code)
       .toLowerCase()
       .trim()
       .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
