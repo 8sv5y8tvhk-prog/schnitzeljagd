@@ -5,6 +5,9 @@ Die App ist ein **Gerüst**: Der Code bleibt immer gleich, jede Stadt ist nur ei
 
 ## So funktioniert das Spiel
 
+**Navigation:** Auf dem Weg zu einer Station zeigt eine dunkle Stadtkarte den eigenen Standort und einen Zielbereich (nicht den genauen Ort). Ab etwa 120 m vor dem Ankunftsbereich verschwindet die Karte, dann zeigt die App nur noch die Entfernung und „wärmer" oder „kälter". Entfernt man sich deutlich, kommt die Karte zurück. Ohne Internet bleiben Standort und Zielbereich sichtbar, nur die Straßen fehlen.
+
+
 1. Stadt auswählen → Story-Intro lesen
 2. Pro Station: Die Geschichte gibt einen Hinweis, wohin man laufen muss. Die App zeigt live die Distanz zum Ziel (GPS).
 3. Am Ziel (innerhalb des Radius) erscheint ein Rätsel, das man nur vor Ort lösen kann.
@@ -51,7 +54,8 @@ Hinweis: Echtes GPS funktioniert im Browser nur über HTTPS (oder localhost). Zu
 - Der gesamte Code und alle `data/*.json` – also Story, Rätsel **inklusive Lösungen**, GPS-Koordinaten und die persönliche Nachricht im Finale.
 
 **Nicht öffentlich** (verlässt nie das Handy):
-- Alle Fotos (IndexedDB im Browser), der Spielfortschritt (localStorage), der Live-Standort. Die App sendet nichts an einen Server – GitHub liefert nur statische Dateien aus.
+- Alle Fotos (IndexedDB im Browser), der Spielfortschritt (localStorage), der Live-Standort. Die App sendet keine Daten an einen Server – GitHub liefert nur statische Dateien aus.
+- Einzige Ausnahme: Für die Navigationskarte lädt das Handy Kartenbilder von OpenStreetMap (`tile.openstreetmap.org`). Der Kartendienst sieht dabei, welcher Stadtausschnitt angezeigt wird, und die IP-Adresse – nicht aber den genauen Standort, die Jagd oder den Startcode.
 
 **Eingebauter Schutz – Startcode-Verschlüsselung:** Die Stadt-Dateien liegen nur noch **verschlüsselt** im Repo (`data/<stadt>.enc.json`, AES-GCM, Schlüssel per PBKDF2 aus einem Startcode). Beim ersten Öffnen fragt die App den Code ab („Siegel brechen") und merkt ihn sich auf dem Handy. Ohne Code sind Story, Rätsellösungen und persönliche Nachricht für niemanden lesbar – auch nicht im öffentlichen Repo.
 
@@ -95,6 +99,9 @@ Claude erzeugt dann die JSON-Datei mit Story, Rätseln und Koordinaten und träg
       "lat": 48.77855,             // GPS-Ziel
       "lng": 9.17985,
       "radius": 100,               // optional, überschreibt defaultRadius
+      "mapUntil": 220,             // optional: Karte bis so viele Meter vor dem Ziel (Standard: radius + 120)
+      "area": { "lat": 48.7, "lng": 9.1, "radius": 130 },  // optional: Zielbereich auf der Karte (Standard: automatisch, Ziel liegt darin, aber nicht mittig)
+      "route": [[48.7, 9.1], [48.71, 9.11]],  // optional: Fußweg als Linie auf der Karte
       "hint": "Tipp, falls man den Ort nicht findet",
       "riddle": {
         "type": "text",                 // "text" (Standard), "choice" oder "number"

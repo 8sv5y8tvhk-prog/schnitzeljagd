@@ -392,15 +392,19 @@ function showStation() {
   $('riddle-input').value = '';
   setFeedback('');
 
-  const compass = document.querySelector('.compass-card');
+  const compass = $('compass-card');
   compass.classList.remove('near');
   compass.style.removeProperty('--pulse');
+  $('distance-display').textContent = '– m';
+  $('gps-status').className = 'gps-status';
+  $('gps-status').textContent = 'Warte auf GPS-Signal …';
 
   // Notfallknopf spätestens nach 2 Minuten anbieten –
   // falls das GPS im Häusermeer partout nicht auslösen will
   state.manualTimer = setTimeout(showManualArrive, 120000);
 
   showScreen('screen-station');
+  setupNav(st);
   acquireWakeLock();
   startWatchingPosition();
 }
@@ -448,7 +452,8 @@ function updateDistanceLoop() {
   if (state.simulatedPos) {
     handlePosition(state.simulatedPos.lat, state.simulatedPos.lng, 5);
   } else {
-    $('gps-status').textContent = 'Testmodus: nutze "Zum Ziel teleportieren".';
+    $('gps-status').textContent = 'Testmodus: unten „Näher" oder „Zum Ziel" antippen';
+    $('map-status').textContent = 'Testmodus: unten „Näher" antippen';
   }
 }
 
@@ -467,26 +472,37 @@ function handlePosition(lat, lng, accuracy) {
   if (state.arrived) return;
   const st = currentStation();
   const dist = haversine(lat, lng, st.lat, st.lng);
-  const radius = st.radius || state.hunt.defaultRadius || 80;
+  const radius = arrivalRadius(st);
+  const almost = dist <= radius + 30;
 
-  $('distance-display').textContent =
-    dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
-  $('gps-status').textContent =
-    state.testMode
-      ? 'Testmodus: simulierte Position, echtes GPS pausiert'
-      : dist <= radius * 2
-        ? 'Gleich geschafft – halte die Augen offen!'
-        : `GPS aktiv (±${Math.round(accuracy)} m)`;
+  $('distance-display').textContent = formatDistance(dist);
+  updateNav(lat, lng, accuracy, dist);
+
+  const status = $('gps-status');
+  const trend = nav.phase === 'warm' ? updateTrend(dist, accuracy) : 0;
+  status.classList.toggle('warmer', !almost && trend < 0);
+  status.classList.toggle('colder', !almost && trend > 0);
+  if (almost) {
+    status.textContent = 'Gleich geschafft – halte die Augen offen!';
+  } else if (!state.testMode && accuracy > 50) {
+    status.textContent = `GPS ungenau (±${Math.round(accuracy)} m) – kurz stehen bleiben`;
+  } else if (trend < 0) {
+    status.textContent = 'Wärmer – du kommst näher';
+  } else if (trend > 0) {
+    status.textContent = 'Kälter – du entfernst dich';
+  } else {
+    status.textContent = 'Ab hier ohne Karte: Geh los und achte auf wärmer oder kälter';
+  }
 
   // Puls-Ring wird schneller, je näher das Ziel kommt; bei Zielnähe grüner Glow
-  const card = document.querySelector('.compass-card');
+  const card = $('compass-card');
   const closeness = Math.min(1, dist / 500);
   card.style.setProperty('--pulse', `${(0.7 + closeness * 1.7).toFixed(2)}s`);
-  card.classList.toggle('near', dist <= radius * 2);
+  card.classList.toggle('near', almost);
 
   // Wer schon mal nah dran war, bekommt den Notfallknopf –
   // gegen GPS-Sprünge zwischen hohen Gebäuden
-  if (dist <= radius * 2.5 && !state.closeEnough) {
+  if (dist <= radius * 2.5 && nav.phase !== 'map' && !state.closeEnough) {
     state.closeEnough = true;
     showManualArrive();
   }
@@ -497,6 +513,155 @@ function handlePosition(lat, lng, accuracy) {
     stopWatchingPosition();
     showRiddle();
   }
+}
+
+/* ── Navigation: Karte bis in die Nähe, danach wärmer/kälter ──
+ * Die Karte zeigt nur einen Zielbereich (Kreis, das Ziel liegt darin, aber
+ * nicht in der Mitte), damit sie den Ort nicht verrät. Ab `mapUntil` Metern
+ * vor dem Ziel verschwindet sie; entfernt man sich deutlich, kommt sie zurück.
+ */
+const nav = {
+  map: null, layers: null, me: null, acc: null, guide: null, area: null,
+  phase: null, follow: true, programmatic: false, lastPos: null,
+  ema: null, ref: null, trend: 0,
+};
+
+function arrivalRadius(st) {
+  return st.radius || state.hunt.defaultRadius || 80;
+}
+
+// Karte bis 120 m vor dem Ankunftsbereich, damit für wärmer/kälter genug Weg bleibt
+function mapUntil(st) {
+  return st.mapUntil || state.hunt.mapUntil || arrivalRadius(st) + 120;
+}
+
+function stationArea(st) {
+  if (st.area) return st.area;
+  const radius = state.hunt.areaRadius || 130;
+  let h = 7;
+  for (const ch of st.title) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const angle = ((h % 360) * Math.PI) / 180;
+  const offset = radius * 0.45;
+  return {
+    lat: st.lat + (offset * Math.cos(angle)) / 111320,
+    lng: st.lng + (offset * Math.sin(angle)) / (111320 * Math.cos((st.lat * Math.PI) / 180)),
+    radius,
+  };
+}
+
+function ensureMap() {
+  if (nav.map) return nav.map;
+  if (!window.L) return null;
+  const map = L.map('nav-map', { zoomControl: false, attributionControl: true });
+  map.attributionControl.setPrefix(false);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(map);
+  // Wer die Karte selbst verschiebt, soll nicht bei jedem GPS-Signal zurückgerissen werden
+  map.on('dragstart zoomstart', () => {
+    if (nav.programmatic) return;
+    nav.follow = false;
+    $('btn-recenter').classList.remove('hidden');
+  });
+  nav.map = map;
+  nav.layers = L.layerGroup().addTo(map);
+  return map;
+}
+
+function setNavPhase(phase) {
+  nav.phase = phase;
+  $('map-card').classList.toggle('hidden', phase !== 'map');
+  $('compass-card').classList.toggle('hidden', phase === 'map');
+  if (phase === 'warm') {
+    nav.ema = null;
+    nav.ref = null;
+    nav.trend = 0;
+  }
+  if (phase === 'map' && nav.map) refreshMapSize();
+}
+
+function setupNav(st) {
+  nav.lastPos = null;
+  nav.follow = true;
+  $('btn-recenter').classList.add('hidden');
+  $('map-distance').textContent = '– m';
+  $('map-status').textContent = 'Warte auf GPS-Signal …';
+  if (!window.L) { setNavPhase('warm'); return; }
+
+  setNavPhase('map');
+  const map = ensureMap();
+  nav.layers.clearLayers();
+  nav.area = stationArea(st);
+  L.circle([nav.area.lat, nav.area.lng], {
+    radius: nav.area.radius, color: '#40dcff', weight: 2, opacity: 0.9,
+    dashArray: '6 8', fillColor: '#40dcff', fillOpacity: 0.12,
+  }).addTo(nav.layers);
+  if (Array.isArray(st.route) && st.route.length > 1) {
+    L.polyline(st.route, { color: '#40dcff', weight: 5, opacity: 0.85, lineCap: 'round' }).addTo(nav.layers);
+  }
+  nav.guide = L.polyline([], { color: '#40dcff', weight: 2, opacity: 0.75, dashArray: '2 9' }).addTo(nav.layers);
+  nav.acc = null;
+  nav.me = null;
+  refreshMapSize();
+}
+
+// Karte erst messbar, wenn sichtbar: sofort anpassen und nach dem Layout noch einmal
+function refreshMapSize() {
+  nav.map.invalidateSize();
+  fitNav();
+  setTimeout(() => { if (nav.map) { nav.map.invalidateSize(); if (nav.follow) fitNav(); } }, 120);
+}
+
+function fitNav() {
+  if (!nav.map || nav.phase !== 'map' || !nav.area) return;
+  const box = L.latLng(nav.area.lat, nav.area.lng).toBounds(nav.area.radius * 2);
+  const bounds = L.latLngBounds(box.getSouthWest(), box.getNorthEast());
+  if (nav.lastPos) bounds.extend(nav.lastPos);
+  nav.programmatic = true;
+  nav.map.fitBounds(bounds, {
+    paddingTopLeft: [24, 96], paddingBottomRight: [24, 28], maxZoom: 18, animate: false,
+  });
+  nav.programmatic = false;
+}
+
+function updateNav(lat, lng, accuracy, dist) {
+  nav.lastPos = [lat, lng];
+  if (!nav.map) return;
+  const until = mapUntil(currentStation());
+  if (nav.phase !== 'warm' && dist <= until) setNavPhase('warm');
+  else if (nav.phase === 'warm' && dist > until * 1.6) setNavPhase('map');
+  if (nav.phase !== 'map') return;
+
+  if (!nav.me) {
+    nav.acc = L.circle([lat, lng], { radius: accuracy, stroke: false, fillColor: '#40dcff', fillOpacity: 0.1 }).addTo(nav.layers);
+    nav.me = L.circleMarker([lat, lng], { radius: 8, color: '#04121a', weight: 3, fillColor: '#40dcff', fillOpacity: 1 }).addTo(nav.layers);
+  } else {
+    nav.me.setLatLng([lat, lng]);
+    nav.acc.setLatLng([lat, lng]).setRadius(accuracy);
+  }
+  nav.guide.setLatLngs([[lat, lng], [nav.area.lat, nav.area.lng]]);
+  $('map-distance').textContent = formatDistance(dist);
+  $('map-status').textContent = !state.testMode && accuracy > 60
+    ? `GPS ungenau (±${Math.round(accuracy)} m) – kurz stehen bleiben`
+    : 'Folge der Karte in den Zielbereich';
+  if (nav.follow) fitNav();
+}
+
+// Wärmer/kälter: geglättete Entfernung, ein Trend gilt erst ab einer
+// Schwelle, die mit der GPS-Ungenauigkeit wächst (gegen Zappeln im Stand)
+function updateTrend(dist, accuracy) {
+  nav.ema = nav.ema === null ? dist : nav.ema * 0.5 + dist * 0.5;
+  if (nav.ref === null) nav.ref = nav.ema;
+  const threshold = Math.max(6, Math.min(25, accuracy * 0.5));
+  const delta = nav.ema - nav.ref;
+  if (delta <= -threshold) { nav.trend = -1; nav.ref = nav.ema; }
+  else if (delta >= threshold) { nav.trend = 1; nav.ref = nav.ema; }
+  return nav.trend;
+}
+
+function formatDistance(dist) {
+  return dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
 }
 
 /* ── Rätsel ── */
@@ -874,6 +1039,27 @@ function teleportToTarget() {
   handlePosition(st.lat, st.lng, 5);
 }
 
+// Testmodus: simulierte Position 50 m Richtung Ziel rücken (Karte → wärmer/kälter testen)
+function stepTowardTarget() {
+  const st = currentStation();
+  const from = state.simulatedPos || simulatedStartFor(state.stationIndex);
+  const d = haversine(from.lat, from.lng, st.lat, st.lng);
+  const f = d <= 50 ? 1 : 50 / d;
+  state.simulatedPos = {
+    lat: from.lat + (st.lat - from.lat) * f,
+    lng: from.lng + (st.lng - from.lng) * f,
+  };
+  handlePosition(state.simulatedPos.lat, state.simulatedPos.lng, 8);
+}
+
+function simulatedStartFor(i) {
+  const prev = state.hunt.stations[i - 1];
+  if (prev) return { lat: prev.lat, lng: prev.lng };
+  if (state.hunt.start) return { lat: state.hunt.start.lat, lng: state.hunt.start.lng };
+  const st = state.hunt.stations[i];
+  return { lat: st.lat - 0.0036, lng: st.lng }; // ca. 400 m südlich
+}
+
 /* ── Minispiele ──
  * Spiele registrieren sich in games/*.js unter window.SchnitzelGames
  * (Vertrag: games/README.md). openGame() zeigt sie im Vollbild-Rahmen.
@@ -1064,6 +1250,12 @@ $('btn-cert-back').addEventListener('click', () => showScreen('screen-finale'));
 $('btn-testmode').addEventListener('click', () => setTestMode(!state.testMode));
 $('btn-test-off').addEventListener('click', () => setTestMode(false));
 $('btn-teleport').addEventListener('click', teleportToTarget);
+$('btn-step').addEventListener('click', stepTowardTarget);
+$('btn-recenter').addEventListener('click', () => {
+  nav.follow = true;
+  $('btn-recenter').classList.add('hidden');
+  fitNav();
+});
 if (new URLSearchParams(location.search).get('test') === '1') setTestMode(true);
 
 init();

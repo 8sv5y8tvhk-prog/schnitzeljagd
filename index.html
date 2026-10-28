@@ -12,6 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -90,7 +91,19 @@
 
     <!-- Phase 1: Auf dem Weg -->
     <div id="phase-travel" class="phase">
-      <div class="compass-card">
+      <!-- Weg-Phase: Karte bis in die Nähe des Ziels -->
+      <div id="map-card" class="map-card hidden">
+        <div id="nav-map" class="nav-map"></div>
+        <div class="map-badge">
+          <span id="map-distance" class="map-distance">– m</span>
+          <span id="map-status" class="map-status">Folge der Karte in den Zielbereich</span>
+        </div>
+        <button id="btn-recenter" class="map-recenter hidden" aria-label="Karte auf mich zentrieren">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg>
+        </button>
+      </div>
+      <!-- Such-Phase: wärmer/kälter -->
+      <div id="compass-card" class="compass-card">
         <div class="pulse-ring"></div>
         <div id="distance-display" class="distance">– m</div>
         <div id="gps-status" class="gps-status">Warte auf GPS-Signal …</div>
@@ -200,7 +213,8 @@
   <!-- Testmodus-Leiste -->
   <div id="testbar" class="testbar hidden">
     <span>Testmodus</span>
-    <button id="btn-teleport" class="btn-mini">Zum Ziel teleportieren</button>
+    <button id="btn-step" class="btn-mini">Näher</button>
+    <button id="btn-teleport" class="btn-mini">Zum Ziel</button>
     <button id="btn-test-off" class="btn-mini">Aus</button>
   </div>
 
@@ -223,6 +237,7 @@
 
   <canvas id="confetti" class="confetti hidden"></canvas>
 
+  <script src="vendor/leaflet/leaflet.js"></script>
   <script src="js/crypto.js"></script>
   <script src="games/memory.js"></script>
   <script src="games/runner.js"></script>

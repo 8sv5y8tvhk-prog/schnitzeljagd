@@ -547,6 +547,74 @@ h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
   z-index: 100;
 }
 
+/* ── Navigationskarte (Weg-Phase) ──
+ * Bricht links aus der Einrückung aus, damit die Karte die volle Breite
+ * nutzt; OSM-Kacheln werden per Filter dunkel eingefärbt.
+ */
+.map-card {
+  position: relative;
+  margin-left: -78px;
+  height: 340px;
+  border: 1px solid var(--cyan-30);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--bg);
+  animation: glowPulse 3s ease-in-out infinite;
+}
+.nav-map { position: absolute; inset: 0; background: var(--bg); }
+.nav-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.92) saturate(0.6);
+}
+.nav-map .leaflet-control-attribution {
+  background: rgba(10, 14, 20, 0.78);
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 9.5px;
+}
+.nav-map .leaflet-control-attribution a { color: var(--cyan); }
+.map-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 60px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--cyan-30);
+  border-radius: 14px;
+  background: rgba(10, 14, 20, 0.86);
+  pointer-events: none;
+}
+.map-distance {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--cyan);
+  line-height: 1.1;
+}
+.map-status { font-size: 12.5px; color: var(--text-2); line-height: 1.35; }
+.map-recenter {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 500;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--cyan-30);
+  border-radius: 12px;
+  background: rgba(10, 14, 20, 0.86);
+  color: var(--cyan);
+  cursor: pointer;
+}
+.map-recenter svg { width: 20px; height: 20px; }
+.gps-status.warmer { color: var(--ok); }
+.gps-status.colder { color: var(--err); }
+
 /* ── Minispiele: Vollbild-Rahmen ── */
 body.game-open { overflow: hidden; }
 .game-overlay {
