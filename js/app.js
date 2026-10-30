@@ -867,14 +867,20 @@ function showFinale() {
 }
 
 // Mit `query` (Name + Stadt) führen die Karten-Apps zum Lokal selbst statt nur
-// zur nächsten Hausadresse der Koordinaten
+// zur nächsten Hausadresse der Koordinaten. Apple Karten braucht dafür die
+// Place ID (`applePlaceId`, Link-Format ab iOS 18.4), sonst landet es auf der Adresse.
 function walkingRouteUrl(dest) {
   const target = encodeURIComponent(dest.query || `${dest.lat},${dest.lng}`);
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  return ios
-    ? `https://maps.apple.com/?daddr=${target}&dirflg=w`
-    : `https://www.google.com/maps/dir/?api=1&destination=${target}&travelmode=walking`;
+  if (!ios) return `https://www.google.com/maps/dir/?api=1&destination=${target}&travelmode=walking`;
+  const v = navigator.userAgent.match(/OS (\d+)_(\d+)/);
+  const unifiedUrls = !v || +v[1] > 18 || (+v[1] === 18 && +v[2] >= 4);
+  if (dest.applePlaceId && unifiedUrls) {
+    return `https://maps.apple.com/directions?destination=${encodeURIComponent(dest.name || dest.query)}` +
+      `&destination-place-id=${encodeURIComponent(dest.applePlaceId)}&mode=walking`;
+  }
+  return `https://maps.apple.com/?daddr=${target}&dirflg=w`;
 }
 
 /* ── Album ── */
