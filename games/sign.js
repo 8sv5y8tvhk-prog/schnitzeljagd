@@ -265,13 +265,18 @@
 
     // Buchstaben auf Runden verteilen
     var chars = Array.from ? Array.from(cfg.word) : cfg.word.split('');
-    var letterIdx = [];
-    chars.forEach(function (ch, i) { if (ch.trim()) letterIdx.push(i); });
-    var R = clamp(num(params.rounds, DEFAULTS.rounds, 1, 8), 1, Math.max(1, letterIdx.length));
+    // Satzzeichen (z. B. Apostroph) zünden zusammen mit dem Buchstaben davor
+    var units = [];
+    chars.forEach(function (ch, i) {
+      if (!ch.trim()) return;
+      if (/[0-9A-Za-z\u00C0-\u024F]/.test(ch) || !units.length) units.push([i]);
+      else units[units.length - 1].push(i);
+    });
+    var R = clamp(num(params.rounds, DEFAULTS.rounds, 1, 8), 1, Math.max(1, units.length));
     var groups = [];
     for (var g = 0; g < R; g++) {
-      var a0 = Math.round(g * letterIdx.length / R), a1 = Math.round((g + 1) * letterIdx.length / R);
-      groups.push(letterIdx.slice(a0, a1));
+      var a0 = Math.round(g * units.length / R), a1 = Math.round((g + 1) * units.length / R);
+      groups.push([].concat.apply([], units.slice(a0, a1)));
     }
 
     addStyle();

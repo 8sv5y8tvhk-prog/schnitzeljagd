@@ -306,7 +306,7 @@ nächsten Ort (z. B. ein Restaurant).
 | `word` | Text | `"LURCH"` | Das Lösungswort auf dem Schild (max. 24 Zeichen, Leerzeichen erlaubt). Kurze Wörter wirken am größten. |
 | `subtitle` | Text | `""` | Zweite, kleine Zeile, die im Finale zündet (max. 32 Zeichen). Leer = keine. |
 | `circle` | ja/nein | `false` | Pinselkreis um das Wort im Finale. |
-| `rounds` | Zahl | `4` | Anzahl der Stromkreise (1–8, höchstens so viele wie Buchstaben). |
+| `rounds` | Zahl | `4` | Anzahl der Stromkreise (1–8, höchstens so viele wie Buchstaben). Satzzeichen wie ein Apostroph zählen nicht als eigener Buchstabe, sie zünden mit dem Buchstaben davor. |
 | `hintAfter` | Zahl (s) | `40` | Nach so vielen Sekunden pro Runde erscheint der erste Tipp (5–600). |
 | `rain` | ja/nein | `true` | Regen vor der Wand. |
 | `title` | Text | `"Leuchtreklame"` | Überschrift der Startkarte. |

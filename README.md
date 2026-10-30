@@ -127,7 +127,8 @@ Claude erzeugt dann die JSON-Datei mit Story, Rätseln und Koordinaten und träg
     "text": "Auflösung der Geschichte",
     "personalMessage": "Optionale persönliche Nachricht im Rahmen",  // oder Feld löschen
     "destination": {              // optional: Knopf im Finale mit Fußweg in der Karten-App
-      "name": "Restaurant", "label": "Weg zum Restaurant", "lat": 48.7, "lng": 9.1
+      "name": "Restaurant", "label": "Weg zum Restaurant", "lat": 48.7, "lng": 9.1,
+      "query": "Name des Lokals + Stadt"  // optional: Karten-Apps suchen das Lokal selbst statt der Hausadresse
     },
     "game": {                     // optional: Schlussspiel nach der letzten Station, vor dem Finale
       "game": "sign",             // Name eines Spiels aus games/ (siehe games/README.md)
