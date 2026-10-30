@@ -843,8 +843,12 @@ function showFinale() {
   $('finale-text').textContent = state.hunt.finale.text;
 
   const personal = $('finale-personal');
-  if (state.hunt.finale.personalMessage) {
-    personal.textContent = state.hunt.finale.personalMessage;
+  const fin = state.hunt.finale;
+  if (fin.personalMessage) {
+    $('personal-text').textContent = fin.personalMessage;
+    $('personal-heart').classList.toggle('hidden', !fin.personalHeart);
+    $('personal-sub').textContent = fin.personalSubline || '';
+    $('personal-sub').classList.toggle('hidden', !fin.personalSubline);
     personal.classList.remove('hidden');
   } else {
     personal.classList.add('hidden');

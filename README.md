@@ -126,6 +126,8 @@ Claude erzeugt dann die JSON-Datei mit Story, Rätseln und Koordinaten und träg
     "title": "Finale-Überschrift",
     "text": "Auflösung der Geschichte",
     "personalMessage": "Optionale persönliche Nachricht im Rahmen",  // oder Feld löschen
+    "personalHeart": true,          // optional: leuchtendes Herz über der Nachricht
+    "personalSubline": "Kleine Zeile darunter",  // optional
     "destination": {              // optional: Knopf im Finale mit Fußweg in der Karten-App
       "name": "Restaurant", "label": "Weg zum Restaurant", "lat": 48.7, "lng": 9.1,
       "query": "Name des Lokals + Stadt",  // optional: Karten-Apps suchen das Lokal selbst statt der Hausadresse
