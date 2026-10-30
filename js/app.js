@@ -721,7 +721,7 @@ function evaluateAnswer(given, choiceBtn = null) {
     if (choiceBtn) choiceBtn.classList.add('choice-ok');
     if (navigator.vibrate) navigator.vibrate(150);
     confettiBurst();
-    setTimeout(st.challenge ? showChallenge : showSolved, 900);
+    setTimeout(st.photoTask ? showPhotoStep : afterPhotoStep, 900);
     return;
   }
 
@@ -743,26 +743,42 @@ function setFeedback(text, cls = '') {
   el.className = `riddle-feedback ${cls}`;
 }
 
-/* ── Foto-Momente ── */
-function mountPhotoSection(slotId, station) {
-  const section = $('photo-section');
-  const slot = $(slotId);
-  if (!station.photoTask) {
-    section.classList.add('hidden');
-    return;
-  }
-  slot.appendChild(section);
-  section.classList.remove('hidden');
-  $('photo-task').textContent = `Foto-Moment: ${station.photoTask}`;
+/* ── Foto-Moment: eigener Schritt nach dem Rätsel (station.photoTask) ──
+ * Kommt vor einer Challenge, damit das Foto noch am Ort entsteht.
+ * Fortschritt merkt `photo: true`, damit ein Neustart hier weitermacht.
+ */
+function showPhotoStep() {
+  const st = currentStation();
+  saveProgress(state.cityId, { station: state.stationIndex, photo: true });
+  $('photo-eyebrow').textContent = `Station ${state.stationIndex + 1} · Foto-Moment`;
+  $('photo-task').textContent = st.photoTask;
   $('photo-preview').classList.add('hidden');
+  $('photo-status').classList.add('hidden');
   $('photo-input').value = '';
+  setPhotoTaken(false);
+  showScreen('screen-photo');
+}
+
+function setPhotoTaken(taken) {
+  $('btn-photo-take').classList.toggle('btn-primary', !taken);
+  $('btn-photo-take').classList.toggle('btn-ghost', taken);
+  $('photo-take-label').textContent = taken ? 'Nochmal aufnehmen' : 'Foto aufnehmen';
+  $('btn-photo-next').classList.toggle('hidden', !taken);
+  $('btn-photo-skip').classList.toggle('hidden', taken);
+}
+
+function afterPhotoStep() {
+  saveProgress(state.cityId, { photo: false });
+  if (currentStation().challenge) showChallenge();
+  else showSolved();
 }
 
 async function handlePhotoInput() {
   const file = $('photo-input').files[0];
   if (!file) return;
-  const task = $('photo-task');
-  task.textContent = 'Foto wird gespeichert …';
+  const status = $('photo-status');
+  status.textContent = 'Foto wird gespeichert …';
+  status.classList.remove('hidden');
   const key = `${state.cityId}:${String(state.stationIndex).padStart(2, '0')}`;
   try {
     const small = await shrinkImage(file);
@@ -771,10 +787,28 @@ async function handlePhotoInput() {
     img.classList.remove('hidden');
     await savePhoto(key, small);
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-    task.textContent = 'Gespeichert – ein Andenken mehr!';
+    status.textContent = 'Gespeichert. Ein Andenken mehr fürs Album.';
+    setPhotoTaken(true);
   } catch (e) {
-    task.textContent = `Foto konnte nicht gespeichert werden (${e && (e.name || e.message) || 'unbekannter Fehler'}). Bitte nochmal versuchen.`;
+    status.textContent = `Foto konnte nicht gespeichert werden (${e && (e.name || e.message) || 'unbekannter Fehler'}). Bitte nochmal versuchen.`;
   }
+}
+
+/* Fotostreifen im Finale: alle Fotos der Jagd, tippen öffnet das Album */
+async function showFinalePhotos() {
+  const strip = $('finale-photos');
+  strip.innerHTML = '';
+  strip.classList.add('hidden');
+  const photos = await getPhotos(`${state.cityId}:`);
+  if (photos.length === 0) return;
+  photos.sort((a, b) => a.key.localeCompare(b.key));
+  for (const { blob } of photos) {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(blob);
+    img.alt = '';
+    strip.appendChild(img);
+  }
+  strip.classList.remove('hidden');
 }
 
 /* ── Station gelöst ── */
@@ -791,8 +825,7 @@ function showSolved() {
   $('solved-text').textContent = st.solvedText;
   $('progress-fill').style.width =
     `${((state.stationIndex + 1) / state.hunt.stations.length) * 100}%`;
-  saveProgress(state.cityId, { station: state.stationIndex + 1, challenge: false });
-  mountPhotoSection('solved-photo-slot', st);
+  saveProgress(state.cityId, { station: state.stationIndex + 1, challenge: false, photo: false });
   showScreen('screen-solved');
 }
 
@@ -828,7 +861,7 @@ function showFinale() {
     destBtn.classList.add('hidden');
   }
 
-  mountPhotoSection('finale-photo-slot', currentStation());
+  showFinalePhotos();
   showScreen('screen-finale');
   confettiBurst(110);
 }
@@ -1185,7 +1218,7 @@ function closeGame() {
  */
 function showChallenge() {
   const ch = currentStation().challenge;
-  saveProgress(state.cityId, { station: state.stationIndex, challenge: true });
+  saveProgress(state.cityId, { station: state.stationIndex, challenge: true, photo: false });
   state.gameStep = startChallenge;
   $('lastgame-eyebrow').textContent = `Station ${state.stationIndex + 1} · Challenge`;
   $('lastgame-title').textContent = ch.title || 'Die Challenge';
@@ -1260,6 +1293,10 @@ $('btn-start-hunt').addEventListener('click', () => {
     showFinaleGame();
     return;
   }
+  if (prog.photo && currentStation() && currentStation().photoTask) {
+    showPhotoStep();
+    return;
+  }
   if (prog.challenge && currentStation() && currentStation().challenge) {
     showChallenge();
     return;
@@ -1299,6 +1336,9 @@ $('btn-finish').addEventListener('click', () => {
 $('btn-hint').addEventListener('click', toggleHint);
 $('btn-riddle-hint').addEventListener('click', toggleRiddleHint);
 $('photo-input').addEventListener('change', handlePhotoInput);
+$('btn-photo-next').addEventListener('click', afterPhotoStep);
+$('btn-photo-skip').addEventListener('click', afterPhotoStep);
+$('finale-photos').addEventListener('click', () => openAlbum('screen-finale'));
 $('btn-album').addEventListener('click', () => openAlbum('screen-finale'));
 $('btn-album-back').addEventListener('click', () => showScreen(state.albumReturn));
 $('btn-album-download').addEventListener('click', downloadAlbum);

@@ -115,7 +115,7 @@ h1 {
 h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 
 /* ── Neon-Karten (Grundbaustein) ── */
-.city-card, .compass-card, .riddle-card, .hint-box, .photo-section {
+.city-card, .compass-card, .riddle-card, .hint-box {
   border: 1px solid var(--cyan-30);
   border-radius: var(--radius-card);
   background: linear-gradient(160deg, rgba(64, 220, 255, 0.08), rgba(64, 220, 255, 0.02));
@@ -391,28 +391,51 @@ h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 }
 
 /* ── Foto-Momente ── */
-.photo-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border-style: dashed;
-  padding: 16px;
-  animation: none;
-}
-.photo-task { font-size: 14.5px; line-height: 1.55; color: var(--text-2); }
 .photo-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  color: var(--cyan);
+  gap: 10px;
 }
-.photo-btn svg { width: 18px; height: 18px; }
+.photo-btn svg { width: 22px; height: 22px; }
+.photo-btn.btn-ghost { color: var(--cyan); }
 .photo-preview {
+  display: block;
   width: 100%;
+  margin-top: 16px;
   border-radius: 12px;
-  max-height: 320px;
+  max-height: 360px;
   object-fit: cover;
+}
+.photo-status { margin-top: 12px; font-size: 14px; font-weight: 500; line-height: 1.5; }
+.btn-plain {
+  font-family: inherit;
+  background: none;
+  border: none;
+  padding: 8px;
+  font-size: 13.5px;
+  color: var(--text-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* Fotostreifen im Finale (tippen öffnet das Album) */
+.finale-photos {
+  display: flex;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.finale-photos img {
+  flex: 1 1 0;
+  min-width: 0;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--cyan-30);
 }
 
 /* ── Album ── */

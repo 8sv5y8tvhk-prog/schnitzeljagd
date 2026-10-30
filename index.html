@@ -137,7 +137,6 @@
     <div class="paper">
       <div id="solved-text" class="story-text"></div>
     </div>
-    <div id="solved-photo-slot"></div>
     <button id="btn-next-station" class="btn btn-primary">Weiter geht's</button>
   </section>
 
@@ -164,23 +163,32 @@
       <div id="finale-text" class="story-text"></div>
       <div id="finale-personal" class="personal-note hidden"></div>
     </div>
+    <button id="finale-photos" class="finale-photos hidden" aria-label="Unser Album öffnen"></button>
     <a id="btn-destination" class="btn btn-primary btn-link hidden" target="_blank" rel="noopener"></a>
-    <div id="finale-photo-slot"></div>
     <button id="btn-album" class="btn btn-ghost">Unser Album</button>
     <button id="btn-cert" class="btn btn-ghost">Urkunde ansehen</button>
     <button id="btn-finish" class="btn btn-ghost">Abenteuer abschließen</button>
   </section>
 
-  <!-- Foto-Sektion (wird je nach Screen umgehängt) -->
-  <div id="photo-section" class="photo-section hidden">
-    <div id="photo-task" class="photo-task"></div>
-    <img id="photo-preview" class="photo-preview hidden" alt="Euer Foto">
-    <label class="btn btn-ghost photo-btn" for="photo-input">
+  <!-- Foto-Moment: eigener Schritt nach dem Rätsel (station.photoTask) -->
+  <section id="screen-photo" class="screen">
+    <div class="start-hero">
+      <p id="photo-eyebrow" class="subtitle">Foto-Moment</p>
+    </div>
+    <div class="paper">
+      <h2>Foto-Moment</h2>
+      <div id="photo-task" class="story-text"></div>
+      <img id="photo-preview" class="photo-preview hidden" alt="Euer Foto">
+      <div id="photo-status" class="photo-status hidden"></div>
+    </div>
+    <label id="btn-photo-take" class="btn btn-primary photo-btn" for="photo-input">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="14" r="3.4"/></svg>
-      Foto aufnehmen
+      <span id="photo-take-label">Foto aufnehmen</span>
     </label>
-    <input id="photo-input" type="file" accept="image/*" capture="environment" hidden>
-  </div>
+    <input id="photo-input" type="file" accept="image/*" capture="user" hidden>
+    <button id="btn-photo-next" class="btn btn-primary hidden">Weiter</button>
+    <button id="btn-photo-skip" class="btn-plain">Ohne Foto weiter</button>
+  </section>
 
   <!-- Album -->
   <section id="screen-album" class="screen">

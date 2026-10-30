@@ -11,8 +11,8 @@ Die App ist ein **Gerüst**: Der Code bleibt immer gleich, jede Stadt ist nur ei
 1. Stadt auswählen → Story-Intro lesen
 2. Pro Station: Die Geschichte gibt einen Hinweis, wohin man laufen muss. Die App zeigt live die Distanz zum Ziel (GPS).
 3. Am Ziel (innerhalb des Radius) erscheint ein Rätsel, das man nur vor Ort lösen kann.
-4. Richtige Antwort → Konfetti 🎉, Emblem gesammelt, nächstes Story-Kapitel (+ optionaler Foto-Moment) → nächste Station.
-5. Am Ende: Finale mit persönlicher Nachricht, Foto-Album der Tour und Urkunde (Dauer, Strecke, Datum) zum Screenshotten. Im Album lassen sich alle Fotos als ZIP herunterladen (oder einzeln per „⬇ speichern").
+4. Richtige Antwort → Konfetti 🎉 → falls die Station eine Foto-Aufgabe hat: eigener Bildschirm „Foto-Moment" mit großem Kamera-Knopf (notfalls „Ohne Foto weiter") → ggf. Challenge → nächstes Story-Kapitel → nächste Station.
+5. Am Ende: Finale mit persönlicher Nachricht, Fotostreifen aller Fotos (tippen öffnet das Album), Foto-Album der Tour und Urkunde (Dauer, Strecke, Datum) zum Screenshotten. Im Album lassen sich alle Fotos als ZIP herunterladen (oder einzeln per „⬇ speichern").
 
 Eingebaute Sicherheitsnetze: Wer in der Nähe des Ziels war (oder 2 Minuten feststeckt), bekommt einen **„Ich stehe am Ziel"-Notfallknopf**, falls das GPS zwischen Häusern spinnt. Nach 3 falschen Antworten öffnet sich der Rätsel-Tipp automatisch. Der Bildschirm bleibt während der Jagd an (Wake Lock). Fotos werden nur lokal auf dem Handy gespeichert (IndexedDB).
 
@@ -118,7 +118,7 @@ Claude erzeugt dann die JSON-Datei mit Story, Rätseln und Koordinaten und träg
         "startText": "Challenge starten",
         "params": { "goal": 40 }    // Spielparameter (siehe games/README.md)
       },
-      "photoTask": "Optionale Foto-Aufgabe, erscheint nach dem Lösen",  // fürs Album
+      "photoTask": "Foto von uns vor …",  // optional: eigener Foto-Schritt direkt nach dem Rätsel (vor einer Challenge), Frontkamera
       "solvedText": "Story-Kapitel nach dem Lösen (bei der letzten Station leer lassen)"
     }
   ],
